@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Início{% endblock %}
+
+{% block content %}
+  <h1>Moneta</h1>
+  <p>Olá, {{ user.get_short_name|default:user.username }}.</p>
+  <form method="post" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button type="submit">Sair</button>
+  </form>
+{% endblock %}

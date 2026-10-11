@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Dados e segredos — nunca versionar
+.env
+*.sqlite3
+*.sqlite3-*
+backups/
+exports/
+
+# Django
+staticfiles/
+media/
+
+# Editores / SO
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
