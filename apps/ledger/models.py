@@ -120,6 +120,16 @@ class Transaction(OwnedModel):
     )
     description = models.CharField("descrição", max_length=140, blank=True)
     notes = models.TextField("observações", blank=True)
+    # Origem de uma prevista gerada por recorrência (continua ligada depois de confirmada).
+    recurrence = models.ForeignKey(
+        "planning.Recurrence",
+        on_delete=models.SET_NULL,
+        related_name="transactions",
+        null=True,
+        blank=True,
+        verbose_name="recorrência",
+    )
+    occurrence_date = models.DateField("data da ocorrência", null=True, blank=True)
 
     class Meta:
         verbose_name = "movimentação"
@@ -144,6 +154,12 @@ class Transaction(OwnedModel):
             models.CheckConstraint(
                 condition=models.Q(status__in=TransactionStatus.values),
                 name="transaction_status_valid",
+            ),
+            models.UniqueConstraint(
+                fields=["recurrence", "occurrence_date"],
+                condition=models.Q(recurrence__isnull=False),
+                name="transaction_unique_occurrence",
+                violation_error_message="Esta ocorrência da recorrência já existe.",
             ),
             models.CheckConstraint(
                 condition=(

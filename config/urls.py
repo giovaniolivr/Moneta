@@ -11,5 +11,6 @@ urlpatterns = [
     path("", include("apps.ledger.urls")),
     path("", include("apps.taxonomy.urls")),
     path("", include("apps.portability.urls")),
+    path("", include("apps.planning.urls")),
     path("admin/", admin.site.urls),
 ]

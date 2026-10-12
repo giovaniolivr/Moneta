@@ -52,7 +52,7 @@ pytest · ruff · mypy (strict)
 **Fase 2 — planejamento**
 
 - [x] 14. Movimentações previstas × realizadas: data futura vira prevista, tela "Previstas" com "A confirmar", aviso na dashboard; saldos e análises só com realizadas
-- [ ] 15. Recorrências
+- [x] 15. Recorrências (mensal, semanal, anual, a cada N): geram previstas para ~3 meses; editar, pausar, pular e excluir sem tocar no histórico confirmado
 - [ ] 16. Parcelamentos no cartão
 - [ ] 17. Orçamentos por categoria
 - [ ] 18. Projeção de saldo e fatura prevista

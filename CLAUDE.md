@@ -97,6 +97,11 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
   (`selectors.export_payload`), import (`services._Importer`) e, se o formato mudar, suba
   `SCHEMA_VERSION` com um migrador em `schema.MIGRATIONS`. O teste de round-trip deve continuar
   verde. `manage.py backup` copia o SQLite (API de backup online) com rotação.
+- Recorrências (`apps/planning`): `materialize(user, today)` gera previstas até hoje + 92 dias,
+  preguiçosa e idempotente (chamada nas telas que mostram previstas). Datas em
+  `planning/domain/schedule.py` (sempre a partir da data inicial). `generated_through` é o cursor:
+  **nunca pode voltar** (senão ocorrências puladas reaparecem) — salve com `update_fields`. O
+  formulário reaproveita `ledger/_entry_fields.html` e `ledger.views.category_groups`.
 - Exclusão de movimentação é desfazível: `transaction_snapshot()` vai para a sessão e a mensagem
   ganha o botão "Desfazer" (`done(..., extra_tags="undo")` → `ledger:transaction_restore`).
 - Dashboard: `?mes=AAAA-MM` escolhe um mês (navegação ◂ ▸, nunca futuro); usuário sem nenhuma

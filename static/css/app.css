@@ -1114,6 +1114,11 @@
     color: var(--color-income);
   }
 
+  .list-item.is-muted .list-item-title,
+  .list-item.is-muted .amount {
+    color: var(--color-muted);
+  }
+
   .list-row-with-action {
     display: flex;
     align-items: center;

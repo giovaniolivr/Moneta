@@ -451,7 +451,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | # | Entrega | Pronto quando |
 |---|---------|---------------|
 | 14 ✅ | Movimentações **previstas × realizadas** (`status`), lista "Previstas", "A confirmar" | análises/saldos só com realizadas; data futura só em prevista |
-| 15 | Recorrências (`apps/planning`): mensal/semanal/anual, gera previstas num horizonte | confirmar/ajustar/pular; idempotente |
+| 15 ✅ | Recorrências (`apps/planning`): mensal/semanal/anual, gera previstas num horizonte | confirmar/ajustar/pular; idempotente |
 | 16 | Parcelamentos no cartão: compra em N× gera N parcelas previstas | cada parcela conta no seu mês |
 | 17 | Orçamentos mensais por categoria + ritmo pro-rata + insight | alerta só com evidência |
 | 18 | Projeção de saldo por conta e fatura prevista do cartão | projeção usa só previstas confirmáveis |

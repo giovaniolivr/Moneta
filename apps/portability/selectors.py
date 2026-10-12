@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from apps.core.money import cents_to_decimal
 from apps.ledger.models import Account, Transaction
+from apps.planning.models import Recurrence
 from apps.taxonomy.models import Category, Tag
 
 from .schema import FORMAT, SCHEMA_VERSION, Payload
@@ -20,6 +21,24 @@ UserLike = AbstractBaseUser | AnonymousUser
 
 def _str(value: Any) -> str | None:
     return None if value is None else str(value)
+
+
+def _iso(day: datetime.date | None) -> str | None:
+    return None if day is None else day.isoformat()
+
+
+def _entry(obj: Transaction | Recurrence) -> dict[str, Any]:
+    return {
+        "kind": obj.kind,
+        "amount_cents": obj.amount_cents,
+        "account": str(obj.account_id),
+        "destination_account": _str(obj.destination_account_id),
+        "category": _str(obj.category_id),
+        "tags": sorted(str(t.pk) for t in obj.tags.all()),
+        "payment_method": obj.payment_method,
+        "description": obj.description,
+        "notes": obj.notes,
+    }
 
 
 def export_payload(user: UserLike) -> Payload:
@@ -54,20 +73,29 @@ def export_payload(user: UserLike) -> Payload:
         }
         for t in Tag.objects.for_user(user).prefetch_related("aliases").order_by("created_at", "pk")
     ]
+    recurrences = [
+        {
+            "id": str(r.pk),
+            **_entry(r),
+            "frequency": r.frequency,
+            "interval": r.interval,
+            "start_date": r.start_date.isoformat(),
+            "end_date": _iso(r.end_date),
+            "is_active": r.is_active,
+            "generated_through": _iso(r.generated_through),
+        }
+        for r in Recurrence.objects.for_user(user)
+        .prefetch_related("tags")
+        .order_by("created_at", "pk")
+    ]
     transactions = [
         {
             "id": str(tx.pk),
-            "kind": tx.kind,
+            **_entry(tx),
             "status": tx.status,
-            "amount_cents": tx.amount_cents,
             "date": tx.date.isoformat(),
-            "account": str(tx.account_id),
-            "destination_account": _str(tx.destination_account_id),
-            "category": _str(tx.category_id),
-            "tags": sorted(str(t.pk) for t in tx.tags.all()),
-            "payment_method": tx.payment_method,
-            "description": tx.description,
-            "notes": tx.notes,
+            "recurrence": _str(tx.recurrence_id),
+            "occurrence_date": _iso(tx.occurrence_date),
         }
         for tx in Transaction.objects.for_user(user)
         .prefetch_related("tags")
@@ -80,6 +108,7 @@ def export_payload(user: UserLike) -> Payload:
         "accounts": accounts,
         "categories": categories,
         "tags": tags,
+        "recurrences": recurrences,
         "transactions": transactions,
     }
 

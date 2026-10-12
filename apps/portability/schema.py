@@ -12,7 +12,7 @@ from collections.abc import Callable
 from typing import Any
 
 FORMAT = "moneta"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 Payload = dict[str, Any]
 
@@ -25,8 +25,14 @@ def _v1_to_v2(payload: Payload) -> Payload:
     return payload
 
 
-MIGRATIONS: dict[int, Callable[[Payload], Payload]] = {1: _v1_to_v2}
-SECTIONS = ("accounts", "categories", "tags", "transactions")
+def _v2_to_v3(payload: Payload) -> Payload:
+    """v3: seção `recurrences`; movimentações podem apontar para a recorrência de origem."""
+    payload.setdefault("recurrences", [])
+    return payload
+
+
+MIGRATIONS: dict[int, Callable[[Payload], Payload]] = {1: _v1_to_v2, 2: _v2_to_v3}
+SECTIONS = ("accounts", "categories", "tags", "recurrences", "transactions")
 
 
 class InvalidFileError(Exception):

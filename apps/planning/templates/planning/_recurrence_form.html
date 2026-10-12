@@ -1,0 +1,50 @@
+{% load ui %}
+<form class="tx-form" method="post" action="{{ form_action }}" data-transaction-form data-kind="{{ kind }}" novalidate>
+  {% csrf_token %}
+  {% include "components/drawer_header.html" %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-error" role="alert">{% icon "circle-alert" "icon-sm" %}{{ form.non_field_errors|join:" " }}</div>
+  {% endif %}
+
+  {% include "ledger/_entry_fields.html" %}
+
+  <fieldset class="field">
+    <legend>Repetição</legend>
+    <div class="form-row">
+      <div class="field">
+        <label for="{{ form.frequency.id_for_label }}">{{ form.frequency.label }}</label>
+        {{ form.frequency }}
+      </div>
+      <div class="field">
+        <label for="{{ form.interval.id_for_label }}">{{ form.interval.label }} <span class="muted">(1 = sempre)</span></label>
+        {{ form.interval }}
+        {% for error in form.interval.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.end_date.id_for_label }}">{{ form.end_date.label }} <span class="muted">(opcional)</span></label>
+        {{ form.end_date }}
+        {% for error in form.end_date.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+      </div>
+    </div>
+    <p class="field-help">Gera movimentações <strong>previstas</strong> para os próximos 3 meses. Elas só contam depois que você as confirma em “Previstas”.{% if recurrence %} Ao salvar, as próximas previstas ainda não confirmadas são atualizadas.{% endif %}</p>
+  </fieldset>
+
+  <div class="form-actions form-actions-single">
+    <button class="btn btn-primary" type="submit">{% if recurrence %}Salvar alterações{% else %}Criar recorrência{% endif %}</button>
+  </div>
+</form>
+
+{% if recurrence %}
+  <form class="stack-sm" method="post" action="{% url 'planning:recurrence_toggle' recurrence.pk %}">
+    {% csrf_token %}
+    <button class="btn btn-ghost" type="submit">{% if recurrence.is_active %}Pausar (remove as próximas previstas){% else %}Retomar{% endif %}</button>
+  </form>
+  <details class="danger-zone">
+    <summary>{% icon "trash-2" "icon-sm" %}Excluir recorrência</summary>
+    <form method="post" action="{% url 'planning:recurrence_delete' recurrence.pk %}">
+      {% csrf_token %}
+      <p class="text-sm">Remove a recorrência e as previstas dela. As movimentações já confirmadas continuam no histórico.</p>
+      <button class="btn btn-danger" type="submit">Confirmar exclusão</button>
+    </form>
+  </details>
+{% endif %}

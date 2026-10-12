@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.analytics",
     "apps.dashboard",
     "apps.portability",
+    "apps.planning",
 ]
 
 MIDDLEWARE = [

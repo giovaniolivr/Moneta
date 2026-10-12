@@ -25,6 +25,7 @@ _ITEMS = (
     ("Movimentações", "arrow-left-right", "ledger:transaction_list"),
     ("Categorias", "tags", "taxonomy:index"),
     ("Contas", "landmark", "ledger:account_list"),
+    ("Planejamento", "calendar", "planning:index"),
     ("Dados", "database", "portability:index"),
 )
 

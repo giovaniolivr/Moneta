@@ -347,4 +347,47 @@ def seed_demo(
                 description="Pagamento da fatura",
             )
 
+    _seed_recurrences(user, cat, today=today, start=start, accounts=(checking, card, savings))
     return DemoSummary(accounts=4, transactions=count, first_date=start, last_date=today)
+
+
+def _seed_recurrences(
+    user: User,
+    cat: dict[str, Category],
+    *,
+    today: datetime.date,
+    start: datetime.date,
+    accounts: tuple[Account, Account, Account],
+) -> None:
+    """Contas fixas como recorrências: geram as previstas dos próximos meses."""
+    # Import local: o app de planejamento depende do ledger, não o contrário.
+    from apps.planning.services import RecurrenceData, create_recurrence
+
+    checking, card, savings = accounts
+    fixed = [
+        ("income", 650_000, 5, checking, "Salário", "Salário", "", None),
+        ("expense", 180_000, 6, checking, "Moradia", "Aluguel", PaymentMethod.PIX, None),
+        ("expense", 9_990, 15, card, "Assinaturas", "Internet", PaymentMethod.CREDIT, None),
+        ("expense", 5_590, 10, card, "Assinaturas", "Streaming", PaymentMethod.CREDIT, None),
+        ("transfer", 50_000, 7, checking, None, "Reserva mensal", "", savings),
+    ]
+    for kind, cents, day, account, category, description, method, destination in fixed:
+        create_recurrence(
+            user,
+            RecurrenceData(
+                entry=TransactionData(
+                    kind=kind,
+                    amount_cents=cents,
+                    date=start,
+                    account=account,
+                    category=cat[category] if category else None,
+                    destination_account=destination,
+                    payment_method=method,
+                    description=description,
+                ),
+                frequency="monthly",
+                interval=1,
+                start_date=start.replace(day=day),
+            ),
+            today=today,
+        )

@@ -8,7 +8,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from apps.ledger.demo import DEMO_USERNAME, seed_demo
-from apps.ledger.models import AccountKind, Transaction, TransactionKind
+from apps.ledger.models import AccountKind, Transaction, TransactionKind, TransactionStatus
 from apps.ledger.selectors import account_balances
 from apps.users.models import User
 
@@ -25,10 +25,15 @@ def _fixed_today(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_generates_months_of_plausible_data() -> None:
     summary = seed_demo(today=TODAY)
     user = User.objects.get(username=DEMO_USERNAME)
-    txs = Transaction.objects.for_user(user)
+    txs = Transaction.objects.for_user(user).filter(status=TransactionStatus.POSTED)
     assert summary.transactions == txs.count() > 150
     assert summary.first_date == datetime.date(2026, 5, 1)
     assert not txs.filter(date__gt=TODAY).exists()
+    # Contas fixas viram recorrências: previstas só de hoje em diante, ligadas à origem.
+    planned = Transaction.objects.for_user(user).filter(status=TransactionStatus.PLANNED)
+    assert planned.exists()
+    assert not planned.filter(date__lt=TODAY).exists()
+    assert not planned.filter(recurrence__isnull=True).exists()
     assert txs.filter(kind=TransactionKind.TRANSFER).exists()
     assert user.is_superuser
 

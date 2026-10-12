@@ -16,8 +16,10 @@ from apps.core.drawer import done, render_drawer, safe_next
 from apps.core.forms import apply_service_errors
 from apps.core.http import AuthenticatedHttpRequest
 from apps.core.money import format_brl
+from apps.planning.services import materialize
 from apps.taxonomy.models import Category, CategoryKind
 from apps.taxonomy.selectors import list_categories
+from apps.users.models import User
 
 from .forms import (
     BATCH_KINDS,
@@ -62,11 +64,10 @@ UNDO_SESSION_KEY = "ledger_undo_delete"
 # Formulário (criar / editar) ----------------------------------------------------
 
 
-def _category_groups(
-    request: AuthenticatedHttpRequest, form: TransactionForm
-) -> list[tuple[str, list[Category]]]:
+def category_groups(user: User, form: TransactionForm) -> list[tuple[str, list[Category]]]:
+    """Categorias por tipo (mais usadas primeiro) para os chips do formulário."""
     groups: dict[str, list[Category]] = {
-        kind: list(categories_by_usage(request.user, kind))
+        kind: list(categories_by_usage(user, kind))
         for kind in (CategoryKind.EXPENSE, CategoryKind.INCOME)
     }
     # Categoria arquivada de uma movimentação em edição continua selecionável.
@@ -91,7 +92,7 @@ def _render_form(
         "form_title": "Editar movimentação" if tx else "Nova movimentação",
         "kind": form["kind"].value() or TransactionKind.EXPENSE,
         "kinds": TransactionKind.choices,
-        "category_groups": _category_groups(request, form),
+        "category_groups": category_groups(request.user, form),
         "selected_category": str(form["category"].value() or ""),
         "frequent_tags": frequent_tags(request.user),
         "saved_message": saved_message,
@@ -161,6 +162,7 @@ def transaction_confirm(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> Htt
 
 def planned_list(request: AuthenticatedHttpRequest) -> HttpResponse:
     today = timezone.localdate()
+    materialize(request.user, today=today)
     planned = list(planned_transactions(request.user))
     return render(
         request,

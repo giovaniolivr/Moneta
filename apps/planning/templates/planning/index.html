@@ -1,0 +1,64 @@
+{% extends "layouts/app.html" %}
+{% load ui money ledger_ui %}
+
+{% block title %}Planejamento{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Planejamento</h1>
+    <p>Recorrências geram movimentações previstas; você confirma cada uma quando acontecer.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'ledger:planned_list' %}">{% icon "calendar" "icon-sm" %}Previstas</a>
+    <a class="btn btn-primary" href="{% url 'planning:recurrence_create' %}" data-drawer>{% icon "plus" "icon-sm" %}Nova recorrência</a>
+  </div>
+</div>
+
+{% if recurrences %}
+  <div class="grid totals">
+    <div class="card">
+      <div class="stat-label">Despesas recorrentes</div>
+      <div class="stat-value amount amount-expense">{% if monthly_expense %}-{% endif %}{{ monthly_expense|brl }}</div>
+      <div class="stat-hint">por mês, em média</div>
+    </div>
+    <div class="card">
+      <div class="stat-label">Receitas recorrentes</div>
+      <div class="stat-value amount amount-income">{{ monthly_income|brl_signed }}</div>
+      <div class="stat-hint">por mês, em média</div>
+    </div>
+  </div>
+{% endif %}
+
+<section class="card" aria-labelledby="recurrences-title">
+  <div class="card-header">
+    <h2 id="recurrences-title">Recorrências</h2>
+  </div>
+  {% if recurrences %}
+    <ul class="list">
+      {% for rec, next_date in recurrences %}
+        <li>
+          <a class="list-item list-item-link{% if not rec.is_active %} is-muted{% endif %}" href="{% url 'planning:recurrence_update' rec.pk %}" data-drawer>
+            {% if rec.category %}
+              <span class="avatar-icon slot-{{ rec.category.color }}">{% icon rec.category.icon|default:"wallet" %}</span>
+            {% else %}
+              <span class="avatar-icon">{% icon "arrow-left-right" %}</span>
+            {% endif %}
+            <span class="list-item-main">
+              <span class="list-item-title">{{ rec.label }}{% if not rec.is_active %} <span class="badge">pausada</span>{% endif %}</span>
+              <span class="list-item-meta">{{ rec.schedule }} · {{ rec.account.name }}{% if rec.destination_account %} → {{ rec.destination_account.name }}{% endif %}{% if next_date %} · próxima em {{ next_date|date:"d/m/Y" }}{% elif rec.is_active %} · encerrada{% endif %}</span>
+            </span>
+            <span class="amount {{ rec|tx_amount_class }}">{{ rec|tx_amount }}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty-state">
+      {% icon "repeat" %}
+      <p class="empty-state-title">Nenhuma recorrência</p>
+      <p class="text-sm">Cadastre o que se repete — aluguel, salário, assinaturas — e o Moneta prevê os próximos meses para você só confirmar.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

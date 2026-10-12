@@ -11,7 +11,7 @@
         {% if tx.description %}{{ tx.description }}{% elif tx.category %}{{ tx.category.name }}{% else %}Transferência{% endif %}
       </span>
       <span class="list-item-meta">
-        {% if show_date %}{{ tx.date|date:"d/m" }} · {% endif %}{% if tx.category and tx.description %}{{ tx.category.name }} · {% endif %}{{ tx.account.name }}{% if tx.destination_account %} → {{ tx.destination_account.name }}{% endif %}{% for tag in tx.tags.all %} · #{{ tag.name }}{% endfor %}
+        {% if show_date %}{{ tx.date|date:"d/m" }} · {% endif %}{% if tx.category and tx.description %}{{ tx.category.name }} · {% endif %}{{ tx.account.name }}{% if tx.destination_account %} → {{ tx.destination_account.name }}{% endif %}{% for tag in tx.tags.all %} · #{{ tag.name }}{% endfor %}{% if tx.recurrence_id %} · <span class="meta-icon" title="Recorrência">{% icon "repeat" "icon-sm" %}<span class="sr-only">recorrente</span></span>{% endif %}
       </span>
     </span>
     <span class="amount {{ tx|tx_amount_class }}">{{ tx|tx_amount }}</span>

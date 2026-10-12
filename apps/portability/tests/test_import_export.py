@@ -7,6 +7,7 @@ import uuid
 from typing import Any
 
 import pytest
+from django.utils import timezone
 
 from apps.analytics import selectors as analytics
 from apps.ledger.models import Account, AccountKind, Transaction
@@ -17,6 +18,8 @@ from apps.ledger.services import (
     create_transaction,
     ensure_default_account,
 )
+from apps.planning.models import Recurrence
+from apps.planning.services import RecurrenceData, create_recurrence
 from apps.portability import schema
 from apps.portability.schema import InvalidFileError
 from apps.portability.selectors import export_payload
@@ -66,6 +69,23 @@ def data(user: Any) -> dict[str, Any]:
         category=cats["Moradia"],
         status="planned",
     )
+    create_recurrence(
+        user,
+        RecurrenceData(
+            entry=TransactionData(
+                kind="expense",
+                amount_cents=9_990,
+                date=D(2026, 1, 15),
+                account=card,
+                category=cats["Assinaturas"],
+                tags=["Internet"],
+            ),
+            frequency="monthly",
+            interval=1,
+            start_date=D(2026, 1, 15),
+        ),
+        today=timezone.localdate(),
+    )
     set_category_archived(cats["Lazer"], archived=True)
     return {"checking": checking, "card": card, "savings": savings, "cats": cats}
 
@@ -76,6 +96,7 @@ def _without_timestamp(payload: dict[str, Any]) -> dict[str, Any]:
 
 def _wipe(user: Any) -> None:
     Transaction.objects.for_user(user).delete()
+    Recurrence.objects.for_user(user).delete()
     TagAlias.objects.for_user(user).delete()
     Tag.objects.for_user(user).delete()
     Account.objects.for_user(user).delete()
@@ -90,7 +111,9 @@ def test_round_trip_preserves_everything(user: Any, data: Any) -> None:
 
     report = import_payload(user, json.loads(json.dumps(before)))
 
-    assert report.transactions.created == 6
+    assert report.recurrences.created == 1
+    assert report.transactions.created == len(before["transactions"])
+    assert Transaction.objects.for_user(user).filter(recurrence__isnull=False).exists()
     assert report.accounts.created == 3
     assert _without_timestamp(export_payload(user)) == _without_timestamp(before)
     assert account_balances(user) == balances
@@ -104,8 +127,7 @@ def test_round_trip_preserves_everything(user: Any, data: Any) -> None:
 def test_import_is_idempotent(user: Any, data: Any) -> None:
     report = import_payload(user, export_payload(user))
     assert report.changes == 0
-    assert report.transactions.unchanged == 6
-    assert Transaction.objects.for_user(user).count() == 6
+    assert report.transactions.unchanged == Transaction.objects.for_user(user).count()
 
 
 def test_file_wins_on_update(user: Any, data: Any) -> None:
@@ -190,7 +212,7 @@ def test_dry_run_writes_nothing(user: Any, data: Any) -> None:
     payload = export_payload(user)
     _wipe(user)
     report = import_payload(user, payload, dry_run=True)
-    assert report.transactions.created == 6
+    assert report.transactions.created == len(payload["transactions"])
     assert Transaction.objects.for_user(user).count() == 0
 
 
@@ -201,7 +223,7 @@ def test_ids_of_another_user_are_refused(user: Any, other_user: Any, data: Any) 
     assert all("outro usuário" in e for e in exc.value.errors)
     assert Transaction.objects.for_user(other_user).count() == 0
     # E os dados do dono continuam intactos.
-    assert Transaction.objects.for_user(user).count() == 6
+    assert Transaction.objects.for_user(user).count() == len(payload["transactions"])
 
 
 def test_export_is_scoped_and_anonymous(user: Any, other_user: Any, data: Any) -> None:

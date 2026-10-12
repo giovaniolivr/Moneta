@@ -24,6 +24,7 @@ from django.db import models, transaction
 
 from apps.core.names import InvalidNameError, clean_display_name, normalize_name
 from apps.ledger.models import Account, Transaction
+from apps.planning.models import Recurrence
 from apps.taxonomy.models import Category, Tag
 from apps.taxonomy.services import add_tag_alias
 from apps.users.models import User
@@ -34,6 +35,7 @@ MAX_FILE_BYTES = 20 * 1024 * 1024
 MAX_ERRORS = 50
 
 _N = TypeVar("_N", Account, Category, Tag)
+_R = TypeVar("_R", Account, Category, Tag, Recurrence)
 Item = dict[str, Any]
 
 
@@ -53,6 +55,7 @@ class ImportReport:
     accounts: Counts = field(default_factory=Counts)
     categories: Counts = field(default_factory=Counts)
     tags: Counts = field(default_factory=Counts)
+    recurrences: Counts = field(default_factory=Counts)
     transactions: Counts = field(default_factory=Counts)
 
     def sections(self) -> list[tuple[str, Counts]]:
@@ -60,6 +63,7 @@ class ImportReport:
             ("Contas", self.accounts),
             ("Categorias", self.categories),
             ("Tags", self.tags),
+            ("Recorrências", self.recurrences),
             ("Movimentações", self.transactions),
         ]
 
@@ -114,6 +118,7 @@ class _Importer:
         self.accounts: dict[uuid.UUID, Account] = {}
         self.categories: dict[uuid.UUID, Category] = {}
         self.tags: dict[uuid.UUID, Tag] = {}
+        self.recurrences: dict[uuid.UUID, Recurrence] = {}
 
     # ───── Utilitários ─────
 
@@ -218,6 +223,7 @@ class _Importer:
         self.each(self.items(payload, "accounts", "Conta"), self.account)
         self.each(self.items(payload, "categories", "Categoria"), self.category)
         self.each(self.items(payload, "tags", "Tag"), self.tag)
+        self.each(self.items(payload, "recurrences", "Recorrência"), self.recurrence)
         self.each(self.items(payload, "transactions", "Movimentação"), self.movement)
 
     def account(self, where: str, item: Item) -> None:
@@ -259,13 +265,13 @@ class _Importer:
 
     def ref(
         self,
-        cache: dict[uuid.UUID, _N],
-        model: type[_N],
+        cache: dict[uuid.UUID, _R],
+        model: type[_R],
         item: Item,
         key: str,
         where: str,
         label: str,
-    ) -> _N | None:
+    ) -> _R | None:
         """Objeto referenciado: do próprio arquivo ou já existente do usuário (pelo UUID)."""
         if item.get(key) is None:
             return None
@@ -277,25 +283,19 @@ class _Importer:
             cache[pk] = existing
         return cache[pk]
 
-    def movement(self, where: str, item: Item) -> None:
-        pk = self.uuid_field(item, "id", where)
-        if self.owned_by_other(Transaction, pk):
-            raise self.error(where, "o identificador pertence a outro usuário deste servidor.")
-        where = f"{where} ({item.get('date', 'sem data')})"
+    def entry(self, where: str, item: Item) -> tuple[Item, set[Tag]]:
+        """Campos comuns a movimentação e recorrência (tipo, valor, contas, categoria, tags)."""
         account = self.ref(self.accounts, Account, item, "account", where, "conta")
         if account is None:
             raise self.error(where, "campo “account” ausente.")
-        tag_ids = self.field(item, "tags", where, list, default=[])
         tags = set()
-        for raw in tag_ids:
+        for raw in self.field(item, "tags", where, list, default=[]):
             tag = self.ref(self.tags, Tag, {"tag": raw}, "tag", where, "tag")
             if tag is not None:
                 tags.add(tag)
         values: Item = {
             "kind": self.field(item, "kind", where, str),
-            "status": self.field(item, "status", where, str, default="posted"),
             "amount_cents": self.field(item, "amount_cents", where, int),
-            "date": self.date_field(item, "date", where),
             "account": account,
             "destination_account": self.ref(
                 self.accounts, Account, item, "destination_account", where, "conta de destino"
@@ -305,22 +305,63 @@ class _Importer:
             "description": self.field(item, "description", where, str, default=""),
             "notes": self.field(item, "notes", where, str, default=""),
         }
-        obj = Transaction.objects.for_user(self.user).filter(pk=pk).first()
+        return values, tags
+
+    def upsert_by_id(
+        self,
+        model: type[Transaction] | type[Recurrence],
+        pk: uuid.UUID,
+        values: Item,
+        tags: set[Tag],
+        counts: Counts,
+        where: str,
+    ) -> Any:
+        obj = model.objects.for_user(self.user).filter(pk=pk).first()
         created = obj is None
         if obj is None:
-            obj = Transaction(id=pk, owner=self.user)
+            obj = model(id=pk, owner=self.user)
             changed_tags = bool(tags)
         else:
             changed_tags = set(obj.tags.all()) != tags
         changed = any(getattr(obj, k) != v for k, v in values.items())
         for k, v in values.items():
             setattr(obj, k, v)
-        self.save(
-            obj,
-            self.report.transactions,
-            created=created,
-            changed=changed or changed_tags,
-            where=where,
-        )
+        self.save(obj, counts, created=created, changed=changed or changed_tags, where=where)
         if created or changed_tags:
             obj.tags.set(tags)
+        return obj
+
+    def recurrence(self, where: str, item: Item) -> None:
+        pk = self.uuid_field(item, "id", where)
+        if self.owned_by_other(Recurrence, pk):
+            raise self.error(where, "o identificador pertence a outro usuário deste servidor.")
+        values, tags = self.entry(where, item)
+        values |= {
+            "frequency": self.field(item, "frequency", where, str),
+            "interval": self.field(item, "interval", where, int, default=1),
+            "start_date": self.date_field(item, "start_date", where),
+            "end_date": self.optional_date(item, "end_date", where),
+            "is_active": self.field(item, "is_active", where, bool, default=True),
+            "generated_through": self.optional_date(item, "generated_through", where),
+        }
+        obj = self.upsert_by_id(Recurrence, pk, values, tags, self.report.recurrences, where)
+        self.recurrences[pk] = obj
+
+    def optional_date(self, item: Item, key: str, where: str) -> datetime.date | None:
+        return None if item.get(key) is None else self.date_field(item, key, where)
+
+    def movement(self, where: str, item: Item) -> None:
+        pk = self.uuid_field(item, "id", where)
+        if self.owned_by_other(Transaction, pk):
+            raise self.error(where, "o identificador pertence a outro usuário deste servidor.")
+        where = f"{where} ({item.get('date', 'sem data')})"
+        values, tags = self.entry(where, item)
+        values |= {
+            "status": self.field(item, "status", where, str, default="posted"),
+            "date": self.date_field(item, "date", where),
+            "recurrence": self.ref(
+                self.recurrences, Recurrence, item, "recurrence", where, "recorrência"
+            ),
+            "occurrence_date": self.optional_date(item, "occurrence_date", where),
+        }
+        self.upsert_by_id(Transaction, pk, values, tags, self.report.transactions, where)

@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import RestrictedError
@@ -208,6 +209,8 @@ def transaction_snapshot(tx: Transaction) -> dict[str, Any]:
         "payment_method": tx.payment_method,
         "description": tx.description,
         "notes": tx.notes,
+        "recurrence": str(tx.recurrence_id or ""),
+        "occurrence_date": tx.occurrence_date.isoformat() if tx.occurrence_date else "",
     }
 
 
@@ -240,6 +243,12 @@ def restore_transaction(user: User, snapshot: dict[str, Any]) -> Transaction:
         description=snapshot["description"],
         notes=snapshot["notes"],
     )
+    if snapshot.get("recurrence"):
+        # A recorrência pode ter sido excluída nesse meio-tempo: aí a ligação some.
+        recurrences = apps.get_model("planning", "Recurrence")._default_manager
+        if recurrences.filter(pk=snapshot["recurrence"], owner=user).exists():
+            tx.recurrence_id = uuid.UUID(snapshot["recurrence"])
+            tx.occurrence_date = datetime.date.fromisoformat(snapshot["occurrence_date"])
     tx.full_clean()
     tx.save()
     tx.tags.set(Tag.objects.for_user(user).filter(pk__in=snapshot["tags"]))
