@@ -1350,6 +1350,14 @@
     padding: var(--space-1) var(--space-2);
     font-size: var(--text-sm);
   }
+
+  /* Toque (celular/tablet): alvo de pelo menos 40px, mesmo nos botões compactos. */
+  @media (pointer: coarse) {
+    .btn-sm {
+      min-height: 40px;
+      padding-inline: var(--space-3);
+    }
+  }
 }
 
 /* ───────────────────────────── Lista de movimentações ───────────────────────────── */

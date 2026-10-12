@@ -56,6 +56,7 @@
     <p class="text-sm muted">Cópia consistente do arquivo do banco (SQLite), feita no computador onde o Moneta roda. Mantém as 10 cópias mais recentes na pasta <code>backups/</code>.</p>
     <pre class="code-block"><code>uv run python manage.py backup</code></pre>
     <p class="text-sm muted">Para automatizar no Windows, crie uma tarefa diária no Agendador de Tarefas executando esse comando na pasta do projeto. Opções: <code>--destino PASTA</code> e <code>--manter N</code>.</p>
+    <p class="text-sm muted">Para restaurar, com o servidor parado: <code>uv run python manage.py restaurar_backup backups/&lt;arquivo&gt; --confirmar</code>. O banco atual é guardado antes.</p>
   </section>
 </div>
 {% endblock %}

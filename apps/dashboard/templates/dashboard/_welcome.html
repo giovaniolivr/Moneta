@@ -1,9 +1,20 @@
-{% load ui %}<div class="page-header">
+{% load ui money %}<div class="page-header">
   <div>
     <h1>Boas-vindas ao Moneta{% if user.first_name %}, {{ user.first_name }}{% endif %}</h1>
     <p>Assim que você registrar as primeiras receitas e despesas, esta tela vira o seu painel.</p>
   </div>
 </div>
+
+{% if price_signals %}
+  <section class="card mb-4" aria-labelledby="welcome-prices-title">
+    <h2 id="welcome-prices-title">Lista de desejos</h2>
+    <ul class="compact-list mt-4">
+      {% for p in price_signals %}
+        <li><span>{% icon "circle-check" "icon-sm" %} <a href="{{ p.url }}">{{ p.item }}</a></span><span>{{ p.current_cents|brl }} na {{ p.store }} — {% if p.kind == "target" %}no seu alvo{% else %}menor em {{ p.window_days }} dias{% endif %}</span></li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
 
 <ol class="welcome-steps">
   <li class="card welcome-step">

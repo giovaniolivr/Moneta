@@ -72,6 +72,7 @@ def index(request: AuthenticatedHttpRequest) -> HttpResponse:
             "recent_transactions": recent_posted(request.user)[:6],
             "due_planned": list(planned_transactions(request.user).filter(date__lte=today)),
             "planning": planning_summary(request.user, today),
+            "price_signals": prices,  # a tela de primeiros passos também mostra
         },
     )
 

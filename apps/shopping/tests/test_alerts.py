@@ -122,3 +122,16 @@ class TestWithData:
         html = client.get(reverse("shopping:item_detail", args=[item.pk])).content.decode()
         assert "Comparar formas de pagar" not in html
         assert "Criar meta" not in html
+
+
+@pytest.mark.django_db
+def test_welcome_screen_shows_price_alerts(
+    client: Client, user: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(timezone, "localdate", lambda *a, **k: TODAY)
+    item = create_item(user, name="Headset", target_cents=45_000)
+    add_observation(item, ObservationData(price_cents=44_990, store="KaBuM!"))
+    client.force_login(user)
+    html = client.get(reverse("home")).content.decode()
+    assert "Boas-vindas ao Moneta" in html  # ainda sem movimentações
+    assert "R$\xa0449,90 na KaBuM! — no seu alvo" in html

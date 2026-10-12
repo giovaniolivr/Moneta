@@ -562,6 +562,11 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 22. Alertas de preço só dentro do app (dashboard e lista), com evidência.
 23. "Melhor agora" = menor preço + frete entre o último registro de cada loja nos últimos 30 dias.
 
+**Tomada (2026-10-12)**
+24. Fase 5 (assistente com IA) **adiada para o futuro**: o usuário já mantém outros projetos com
+    LLM e não quer mais um custo agora. A preparação continua (services como ferramentas).
+    Próximo: revisão geral, polimento e configuração do uso real.
+
 **Adiadas**
 Deploy/hospedagem · Postgres · API · subcategorias · orçamentos · rate limit · tarefas em fundo ·
 i18n (o app nasce pt-BR, mas com strings marcadas para tradução).

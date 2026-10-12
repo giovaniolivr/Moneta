@@ -13,7 +13,8 @@ passo a passo (sem ler nem exibir o conteúdo de `.env`; ele cola os valores):
 1. `.env` a partir de `.env.example`; gerar `DJANGO_SECRET_KEY` nova (comando no arquivo).
 2. `DATABASE_URL=sqlite:///db.sqlite3` → `migrate` → `createsuperuser` (seu usuário/senha).
 3. Decidir `DEV_AUTO_LOGIN` (com dados reais, provavelmente `0`) e `DEV_AUTO_LOGIN_USERNAME`.
-4. Agendar `manage.py backup` no Agendador de Tarefas do Windows (diário) e testar um restore.
+4. Agendar `manage.py backup` no Agendador de Tarefas do Windows (diário) e testar um restore
+   (`manage.py restaurar_backup <arquivo> --confirmar`, guarda o banco atual antes).
 5. Fazer um export JSON inicial e conferir que `db.sqlite3`/`.env`/`backups/` seguem fora do git.
 Mobile/PWA também fica para essa etapa ("usar o app em si").
 6. Entrega 30 (coletor do Mercado Livre, API oficial com OAuth): criar o app no portal de

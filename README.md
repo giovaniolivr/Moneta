@@ -78,7 +78,7 @@ pytest · ruff · mypy (strict)
 - [x] 32. Da lista para as estratégias de compra (preço e parcelas preenchidos) e para uma meta
 - [ ] 33. Polimento da Fase 4
 
-**Próxima fase:** assistente com IA.
+**Futuro:** assistente com IA (Fase 5) — adiada; o foco agora é revisão, polimento e uso real.
 
 ## Rodando localmente
 
@@ -107,6 +107,9 @@ Acesse http://127.0.0.1:8000 — em desenvolvimento o login é automático (some
 - **Backup do banco:** `uv run python manage.py backup` grava uma cópia consistente em `backups/`
   (mantém as 10 mais recentes; `--destino PASTA`, `--manter N`). Para automatizar no Windows, crie
   uma tarefa diária no Agendador de Tarefas com esse comando, iniciando na pasta do projeto.
+- **Restaurar:** com o servidor parado, `uv run python manage.py restaurar_backup backups/<arquivo>`
+  mostra o que vai fazer; repita com `--confirmar`. Antes de restaurar, o banco atual é copiado para
+  `backups/` (nada se perde se o backup escolhido for o errado).
 
 ## Qualidade
 
