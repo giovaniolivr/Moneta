@@ -9,7 +9,7 @@ from django.utils import timezone
 from apps.taxonomy.models import Category, Tag
 
 from .filters import TransactionFilter
-from .models import Account, Transaction, TransactionKind
+from .models import Account, Transaction, TransactionKind, TransactionStatus
 
 
 def list_accounts(
@@ -43,7 +43,11 @@ def account_balances(
         pk: opening
         for pk, opening in Account.objects.for_user(user).values_list("pk", "opening_balance_cents")
     }
-    txs = Transaction.objects.for_user(user).filter(date__lte=on).order_by()
+    txs = (
+        Transaction.objects.for_user(user)
+        .filter(date__lte=on, status=TransactionStatus.POSTED)
+        .order_by()
+    )
 
     outgoing_or_own = (
         txs.filter(date__gte=F("account__opening_date"))
@@ -139,6 +143,8 @@ def filter_transactions(
     user: AbstractBaseUser | AnonymousUser, f: TransactionFilter
 ) -> QuerySet[Transaction]:
     qs = list_transactions(user)
+    if f.status:
+        qs = qs.filter(status=f.status)
     if f.date_from:
         qs = qs.filter(date__gte=f.date_from)
     if f.date_to:
@@ -160,6 +166,19 @@ def filter_transactions(
     if f.search:
         qs = qs.filter(Q(description__icontains=f.search) | Q(notes__icontains=f.search))
     return qs
+
+
+def planned_transactions(user: AbstractBaseUser | AnonymousUser) -> QuerySet[Transaction]:
+    """Previstas, da mais antiga para a mais nova (as vencidas primeiro)."""
+    return (
+        list_transactions(user)
+        .filter(status=TransactionStatus.PLANNED)
+        .order_by("date", "created_at")
+    )
+
+
+def recent_posted(user: AbstractBaseUser | AnonymousUser) -> QuerySet[Transaction]:
+    return list_transactions(user).filter(status=TransactionStatus.POSTED)
 
 
 @dataclass(frozen=True)

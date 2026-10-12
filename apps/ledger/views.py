@@ -37,10 +37,12 @@ from .selectors import (
     last_used_account,
     list_accounts,
     list_transactions,
+    planned_transactions,
     transaction_totals,
 )
 from .services import (
     BatchError,
+    confirm_transaction,
     create_account,
     create_transaction,
     create_transactions,
@@ -133,14 +135,42 @@ def transaction_update(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> Http
         return _render_form(request, TransactionForm(user=request.user, instance=tx))
 
     form = TransactionForm(request.POST, user=request.user, instance=tx)
+    confirm = "confirm" in request.POST
+    if form.is_valid() and confirm and form.cleaned_data["date"] > timezone.localdate():
+        form.add_error("date", "Para confirmar, use a data de hoje ou uma anterior.")
     if form.is_valid():
         try:
-            update_transaction(tx, form.to_data())
+            update_transaction(tx, form.to_data(confirm=confirm))
         except ValidationError as error:
             form.add_service_errors(error)
         else:
-            return done(request, "Movimentação atualizada.", fallback="ledger:transaction_list")
+            message = "Movimentação confirmada." if confirm else "Movimentação atualizada."
+            return done(request, message, fallback="ledger:transaction_list")
     return _render_form(request, form)
+
+
+@require_POST
+def transaction_confirm(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpResponse:
+    """Confirma uma prevista como está (para ajustar valor/data, use a edição)."""
+    tx = get_object_or_404(planned_transactions(request.user), pk=pk)
+    confirm_transaction(tx, today=timezone.localdate())
+    label = f"{tx.get_kind_display()} de {format_brl(tx.amount_cents)}"
+    messages.success(request, f"{label} confirmada em {tx.date:%d/%m/%Y}.")
+    return redirect(safe_next(request) or "ledger:planned_list")
+
+
+def planned_list(request: AuthenticatedHttpRequest) -> HttpResponse:
+    today = timezone.localdate()
+    planned = list(planned_transactions(request.user))
+    return render(
+        request,
+        "ledger/planned_list.html",
+        {
+            "due": [tx for tx in planned if tx.date <= today],
+            "upcoming": [tx for tx in planned if tx.date > today],
+            "today": today,
+        },
+    )
 
 
 @require_POST
@@ -226,6 +256,7 @@ def transaction_list(request: AuthenticatedHttpRequest) -> HttpResponse:
             "totals": transaction_totals(transactions),
             "page": page,
             "page_query": page_query.urlencode(),
+            "planned_count": planned_transactions(request.user).count(),
             "has_extra_filters": any(
                 params.getlist(k) for k in ("tipo", "categoria", "tag", "conta", "pagamento")
             ),

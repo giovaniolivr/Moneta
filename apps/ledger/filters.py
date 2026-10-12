@@ -53,6 +53,8 @@ class TransactionFilter:
     account_ids: tuple[uuid.UUID, ...] = ()
     payment_methods: tuple[str, ...] = ()
     search: str = ""
+    # Só realizadas por padrão: análises, saldos e a lista nunca misturam projeções.
+    status: str = "posted"  # "planned" ou "" (todas)
 
     def to_query(self) -> str:
         """Query string equivalente (para links de drill-down da dashboard)."""
@@ -72,4 +74,6 @@ class TransactionFilter:
         params += [("pagamento", m) for m in self.payment_methods]
         if self.search:
             params.append(("q", self.search))
+        if self.status == "planned":
+            params.append(("situacao", "prevista"))
         return urlencode(params)

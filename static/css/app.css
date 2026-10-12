@@ -1114,6 +1114,17 @@
     color: var(--color-income);
   }
 
+  .list-row-with-action {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .list-row-with-action > a {
+    flex: 1;
+    min-width: 0;
+  }
+
   .alert-text {
     flex: 1;
   }

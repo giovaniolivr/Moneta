@@ -57,6 +57,14 @@ class TransactionKind(models.TextChoices):
     TRANSFER = "transfer", "Transferência"
 
 
+class TransactionStatus(models.TextChoices):
+    """Realizada entra em saldos e análises; prevista é projeção (recorrência, parcela, conta
+    futura) e só passa a contar quando o usuário a confirma."""
+
+    POSTED = "posted", "Realizada"
+    PLANNED = "planned", "Prevista"
+
+
 class PaymentMethod(models.TextChoices):
     PIX = "pix", "Pix"
     DEBIT = "debit", "Débito"
@@ -77,6 +85,12 @@ class Transaction(OwnedModel):
     """
 
     kind = models.CharField("tipo", max_length=10, choices=TransactionKind.choices)
+    status = models.CharField(
+        "situação",
+        max_length=10,
+        choices=TransactionStatus.choices,
+        default=TransactionStatus.POSTED,
+    )
     amount_cents = models.BigIntegerField("valor (centavos)")
     date = models.DateField("data")
     account = models.ForeignKey(
@@ -115,6 +129,7 @@ class Transaction(OwnedModel):
             models.Index(fields=["owner", "date"]),
             models.Index(fields=["owner", "kind", "date"]),
             models.Index(fields=["owner", "category", "date"]),
+            models.Index(fields=["owner", "status", "date"]),
         ]
         constraints = [
             models.CheckConstraint(
@@ -125,6 +140,10 @@ class Transaction(OwnedModel):
             models.CheckConstraint(
                 condition=models.Q(kind__in=TransactionKind.values),
                 name="transaction_kind_valid",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(status__in=TransactionStatus.values),
+                name="transaction_status_valid",
             ),
             models.CheckConstraint(
                 condition=(
@@ -153,6 +172,10 @@ class Transaction(OwnedModel):
 
     def __str__(self) -> str:
         return f"{self.get_kind_display()} {format_brl(self.amount_cents)} em {self.date:%d/%m/%Y}"
+
+    @property
+    def is_planned(self) -> bool:
+        return self.status == TransactionStatus.PLANNED
 
     def clean(self) -> None:
         """Regras que envolvem objetos relacionados (o banco não consegue checar)."""
@@ -184,8 +207,12 @@ class Transaction(OwnedModel):
                 kind_label = category.get_kind_display().lower()
                 errors["category"] = f"A categoria “{category}” é de {kind_label}."
 
-        if self.date and self.date > timezone.localdate():
-            errors["date"] = "Movimentações futuras chegam com o planejamento (fase 2)."
+        if (
+            self.date
+            and self.date > timezone.localdate()
+            and self.status != TransactionStatus.PLANNED
+        ):
+            errors["date"] = "Uma movimentação realizada não pode ter data futura."
 
         if errors:
             raise ValidationError(errors)

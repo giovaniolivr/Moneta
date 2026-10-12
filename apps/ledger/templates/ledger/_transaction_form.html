@@ -96,11 +96,22 @@
     </div>
   </details>
 
-  <div class="form-actions{% if transaction %} form-actions-single{% endif %}">
+  {% if transaction.is_planned %}
+    <p class="alert" role="note">{% icon "calendar" "icon-sm" %}<span class="alert-text">Prevista: só entra em saldos e análises quando for confirmada.</span></p>
+  {% else %}
+    <p class="text-sm muted">Com data futura, a movimentação fica <strong>prevista</strong> até você confirmá-la.</p>
+  {% endif %}
+
+  <div class="form-actions{% if transaction and not transaction.is_planned %} form-actions-single{% endif %}">
     {% if not transaction %}
       <button class="btn btn-secondary" type="submit" name="save_and_new" value="1">Salvar e adicionar outra</button>
     {% endif %}
-    <button class="btn btn-primary" type="submit">{% if transaction %}Salvar alterações{% else %}Salvar{% endif %}</button>
+    {% if transaction.is_planned %}
+      <button class="btn btn-secondary" type="submit">Salvar como prevista</button>
+      <button class="btn btn-primary" type="submit" name="confirm" value="1">Salvar e confirmar</button>
+    {% else %}
+      <button class="btn btn-primary" type="submit">{% if transaction %}Salvar alterações{% else %}Salvar{% endif %}</button>
+    {% endif %}
   </div>
 </form>
 

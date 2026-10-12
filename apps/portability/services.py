@@ -293,6 +293,7 @@ class _Importer:
                 tags.add(tag)
         values: Item = {
             "kind": self.field(item, "kind", where, str),
+            "status": self.field(item, "status", where, str, default="posted"),
             "amount_cents": self.field(item, "amount_cents", where, int),
             "date": self.date_field(item, "date", where),
             "account": account,

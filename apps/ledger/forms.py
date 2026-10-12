@@ -14,7 +14,14 @@ from apps.taxonomy.selectors import list_tags
 from apps.users.models import User
 
 from .filters import DEFAULT_PERIOD, PERIOD_CHOICES, TransactionFilter, period_range
-from .models import Account, AccountKind, PaymentMethod, Transaction, TransactionKind
+from .models import (
+    Account,
+    AccountKind,
+    PaymentMethod,
+    Transaction,
+    TransactionKind,
+    TransactionStatus,
+)
 from .services import TransactionData
 
 
@@ -136,9 +143,18 @@ class TransactionForm(forms.Form):
     def tag_names(self) -> list[str]:
         return [name for name in self.cleaned_data.get("tags", "").split(",") if name.strip()]
 
-    def to_data(self) -> TransactionData:
+    def status(self, *, confirm: bool = False) -> str:
+        """Data futura ⇒ prevista. Uma prevista editada continua prevista até ser confirmada."""
+        if self.cleaned_data["date"] > timezone.localdate():
+            return TransactionStatus.PLANNED
+        if confirm or self.instance is None:
+            return TransactionStatus.POSTED
+        return self.instance.status
+
+    def to_data(self, *, confirm: bool = False) -> TransactionData:
         d = self.cleaned_data
         return TransactionData(
+            status=self.status(confirm=confirm),
             kind=d["kind"],
             amount_cents=d["amount"],
             date=d["date"],

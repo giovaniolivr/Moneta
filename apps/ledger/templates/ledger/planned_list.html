@@ -1,0 +1,51 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Previstas{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Previstas</h1>
+    <p>Movimentações futuras ou a confirmar. Só entram em saldos e análises depois de confirmadas.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'ledger:transaction_list' %}">Ver realizadas</a>
+    {% if new_transaction_url %}<a class="btn btn-primary" href="{{ new_transaction_url }}" data-drawer>{% icon "plus" "icon-sm" %}Nova</a>{% endif %}
+  </div>
+</div>
+
+<div class="stack">
+  <section class="card" aria-labelledby="due-title">
+    <div class="card-header">
+      <h2 id="due-title">A confirmar</h2>
+      <span class="text-sm muted">Data já chegou</span>
+    </div>
+    {% if due %}
+      <p class="text-sm muted mb-4">Confirme como está ou toque para ajustar valor e data antes.</p>
+      <ul class="list">
+        {% for tx in due %}{% include "components/transaction_row.html" with show_date=True confirmable=True %}{% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-state text-sm">Nada a confirmar.</p>
+    {% endif %}
+  </section>
+
+  <section class="card" aria-labelledby="upcoming-title">
+    <div class="card-header">
+      <h2 id="upcoming-title">Próximas</h2>
+    </div>
+    {% if upcoming %}
+      <ul class="list">
+        {% for tx in upcoming %}{% include "components/transaction_row.html" with show_date=True confirmable=True %}{% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty-state">
+        {% icon "calendar" %}
+        <p class="empty-state-title">Nenhuma movimentação prevista</p>
+        <p class="text-sm">Registre uma movimentação com data futura (ex.: o IPVA de janeiro) e ela aparece aqui.</p>
+      </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

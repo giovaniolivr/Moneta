@@ -16,6 +16,7 @@
     </p>
   </div>
   <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'ledger:planned_list' %}">{% icon "calendar" "icon-sm" %}Previstas{% if planned_count %} <span class="badge">{{ planned_count }}</span>{% endif %}</a>
     <a class="btn btn-ghost" href="{% url 'portability:transactions_csv' %}{% if page_query %}?{{ page_query }}{% endif %}" download>Exportar CSV</a>
     <a class="btn btn-secondary" href="{% url 'ledger:transaction_batch' %}">Lançar em lote</a>
     {% if new_transaction_url %}

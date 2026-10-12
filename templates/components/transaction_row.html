@@ -1,5 +1,5 @@
 {% load ui ledger_ui %}
-<li>
+<li{% if confirmable %} class="list-row-with-action"{% endif %}>
   <a class="list-item list-item-link" href="{% url 'ledger:transaction_update' tx.pk %}?next={{ request.get_full_path|urlencode }}" data-drawer>
     {% if tx.category %}
       <span class="avatar-icon slot-{{ tx.category.color }}">{% icon tx.category.icon|default:"wallet" %}</span>
@@ -16,4 +16,10 @@
     </span>
     <span class="amount {{ tx|tx_amount_class }}">{{ tx|tx_amount }}</span>
   </a>
+  {% if confirmable %}
+    <form method="post" action="{% url 'ledger:transaction_confirm' tx.pk %}">
+      {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <button class="btn btn-secondary btn-sm" type="submit" aria-label="Confirmar {{ tx|tx_amount }} de {{ tx.date|date:'d/m' }}">{% icon "circle-check" "icon-sm" %}Confirmar</button>
+    </form>
+  {% endif %}
 </li>

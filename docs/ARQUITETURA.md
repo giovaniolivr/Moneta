@@ -446,12 +446,27 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 12 ✅ | Export/import JSON, CSV, comando de backup | round-trip preserva totais |
 | 13 ✅ | Polimento: estados vazios, acessibilidade, desfazer exclusão, navegação ◂ ▸ entre meses (PWA adiado para a etapa de uso real) | usável diariamente |
 
+### Roadmap da Fase 2 — planejamento
+
+| # | Entrega | Pronto quando |
+|---|---------|---------------|
+| 14 ✅ | Movimentações **previstas × realizadas** (`status`), lista "Previstas", "A confirmar" | análises/saldos só com realizadas; data futura só em prevista |
+| 15 | Recorrências (`apps/planning`): mensal/semanal/anual, gera previstas num horizonte | confirmar/ajustar/pular; idempotente |
+| 16 | Parcelamentos no cartão: compra em N× gera N parcelas previstas | cada parcela conta no seu mês |
+| 17 | Orçamentos mensais por categoria + ritmo pro-rata + insight | alerta só com evidência |
+| 18 | Projeção de saldo por conta e fatura prevista do cartão | projeção usa só previstas confirmáveis |
+| 19 | Metas (`apps/goals`) sobre o saldo de uma conta | aporte mensal necessário vs. capacidade de poupança |
+| 20 | Dashboard realizado × previsto + polimento | |
+
 ## 11. Preparação para os módulos futuros
 
 - **Objetivos (Fase 2)**: novo app `goals`; lê capacidade de poupança via `analytics.selectors`
   (média de resultado mensal). Nenhuma mudança no `ledger`.
 - **Recorrências/parcelamentos (Fase 2)**: app `planning` gera transações `status=planned`;
   `analytics` passa a separar realizado × projetado pelo `status`.
+- **Rendimento de contas (Fase 3)**: a conta poderá ter um *produto* (ex.: Caixinha Turbo ou
+  normal do Nubank, CDB a 100% do CDI) para estimar quanto o saldo rende com o tempo — base para
+  metas mais precisas e para o simulador. Configuração do produto separada das taxas de mercado.
 - **Simulador (Fase 3)**: núcleo em Python puro (`investments/domain`): fluxos de caixa datados,
   taxa diária, IR regressivo, IOF, comparação de estratégias por **valor presente / saldo final na
   mesma data-base**. Produtos (Caixinha Nubank) como configuração separada das taxas de mercado
@@ -481,6 +496,14 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 10. Análises por **mês civil da data da movimentação** (competência), não pelo ciclo da fatura:
     uma compra de 28/09 no cartão conta em setembro, mesmo caindo na fatura de outubro; o
     pagamento da fatura é transferência e não conta.
+
+**Tomadas para a Fase 2 (2026-10-12)**
+11. Parcelamento: **cada parcela conta no mês da própria parcela** (R$ 1.200 em 12× = R$ 100/mês);
+    a compra fica agrupada num plano de parcelamento.
+12. Recorrências e parcelas viram **previstas**; só entram nas análises quando o usuário
+    **confirma** (pode ajustar valor/data ou pular). Nada é lançado sozinho.
+13. Metas medem o progresso pelo **saldo de uma conta** (ex.: Caixinha); aportes são as
+    transferências que o usuário já faz.
 
 **Adiadas**
 Deploy/hospedagem · Postgres · API · subcategorias · orçamentos · rate limit · tarefas em fundo ·

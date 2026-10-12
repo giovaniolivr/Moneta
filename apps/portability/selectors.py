@@ -58,6 +58,7 @@ def export_payload(user: UserLike) -> Payload:
         {
             "id": str(tx.pk),
             "kind": tx.kind,
+            "status": tx.status,
             "amount_cents": tx.amount_cents,
             "date": tx.date.isoformat(),
             "account": str(tx.account_id),

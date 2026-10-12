@@ -38,6 +38,14 @@
   </nav>
 </div>
 
+{% if due_planned %}
+  <div class="alert alert-due mb-4" role="status">
+    {% icon "calendar" "icon-sm" %}
+    <span class="alert-text">{{ due_planned|length }} movimentaç{{ due_planned|length|pluralize:"ão prevista chegou,ões previstas chegaram" }} à data e aguarda{{ due_planned|length|pluralize:",m" }} confirmação. Até lá, não entra{{ due_planned|length|pluralize:",m" }} nos números abaixo.</span>
+    <a class="btn btn-secondary btn-sm" href="{% url 'ledger:planned_list' %}">Revisar</a>
+  </div>
+{% endif %}
+
 <div class="dashboard">
   {# ───── Indicadores ───── #}
   <section class="kpis" aria-label="Indicadores do período">

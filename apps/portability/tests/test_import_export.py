@@ -58,6 +58,14 @@ def data(user: Any) -> dict[str, Any]:
     add("expense", 4_000, D(2026, 9, 20), account=checking, category=cats["Lazer"])
     add("transfer", 12_345, D(2026, 10, 1), account=checking, destination_account=card)
     add("transfer", 50_000, D(2026, 10, 2), account=checking, destination_account=savings)
+    add(
+        "expense",
+        90_000,
+        D(2027, 1, 15),
+        account=checking,
+        category=cats["Moradia"],
+        status="planned",
+    )
     set_category_archived(cats["Lazer"], archived=True)
     return {"checking": checking, "card": card, "savings": savings, "cats": cats}
 
@@ -82,7 +90,7 @@ def test_round_trip_preserves_everything(user: Any, data: Any) -> None:
 
     report = import_payload(user, json.loads(json.dumps(before)))
 
-    assert report.transactions.created == 5
+    assert report.transactions.created == 6
     assert report.accounts.created == 3
     assert _without_timestamp(export_payload(user)) == _without_timestamp(before)
     assert account_balances(user) == balances
@@ -96,8 +104,8 @@ def test_round_trip_preserves_everything(user: Any, data: Any) -> None:
 def test_import_is_idempotent(user: Any, data: Any) -> None:
     report = import_payload(user, export_payload(user))
     assert report.changes == 0
-    assert report.transactions.unchanged == 5
-    assert Transaction.objects.for_user(user).count() == 5
+    assert report.transactions.unchanged == 6
+    assert Transaction.objects.for_user(user).count() == 6
 
 
 def test_file_wins_on_update(user: Any, data: Any) -> None:
@@ -182,7 +190,7 @@ def test_dry_run_writes_nothing(user: Any, data: Any) -> None:
     payload = export_payload(user)
     _wipe(user)
     report = import_payload(user, payload, dry_run=True)
-    assert report.transactions.created == 5
+    assert report.transactions.created == 6
     assert Transaction.objects.for_user(user).count() == 0
 
 
@@ -193,7 +201,7 @@ def test_ids_of_another_user_are_refused(user: Any, other_user: Any, data: Any) 
     assert all("outro usuário" in e for e in exc.value.errors)
     assert Transaction.objects.for_user(other_user).count() == 0
     # E os dados do dono continuam intactos.
-    assert Transaction.objects.for_user(user).count() == 5
+    assert Transaction.objects.for_user(user).count() == 6
 
 
 def test_export_is_scoped_and_anonymous(user: Any, other_user: Any, data: Any) -> None:
@@ -223,10 +231,16 @@ class TestFileFormat:
             migrated["tags"] = [{"id": t, "name": t} for t in payload["tag_names"]]
             return migrated
 
-        monkeypatch.setattr(schema, "SCHEMA_VERSION", 2)
-        monkeypatch.setitem(schema.MIGRATIONS, 1, v1_to_v2)
+        monkeypatch.setattr(schema, "SCHEMA_VERSION", 3)
+        monkeypatch.setitem(schema.MIGRATIONS, 2, v1_to_v2)
         payload = parse_file(
             b'\xef\xbb\xbf{"format": "moneta", "schema_version": 1, "tag_names": ["x"]}'
         )
-        assert payload["schema_version"] == 2
+        assert payload["schema_version"] == 3
         assert payload["tags"] == [{"id": "x", "name": "x"}]
+
+    def test_v1_files_are_all_posted(self) -> None:
+        raw = {"format": "moneta", "schema_version": 1, "transactions": [{"id": "x"}]}
+        payload = parse_file(json.dumps(raw).encode())
+        assert payload["schema_version"] == schema.SCHEMA_VERSION
+        assert payload["transactions"][0]["status"] == "posted"

@@ -6,7 +6,14 @@ from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.ledger.models import Account, AccountKind, PaymentMethod, Transaction, TransactionKind
+from apps.ledger.models import (
+    Account,
+    AccountKind,
+    PaymentMethod,
+    Transaction,
+    TransactionKind,
+    TransactionStatus,
+)
 from apps.ledger.selectors import categories_by_usage, frequent_tags, last_used_account
 from apps.ledger.services import (
     TransactionData,
@@ -174,16 +181,22 @@ class TestErrors:
         )
         assert "é de receita" in html
 
-    def test_future_date(self, logged: Client, user: Any, account: Account) -> None:
+    def test_future_date_becomes_planned(self, logged: Client, user: Any, account: Account) -> None:
         tomorrow = timezone.localdate() + datetime.timedelta(days=1)
-        html = self._post(
-            logged,
-            amount="10",
-            category=category(user, "Lazer").pk,
-            account=account.pk,
-            date=tomorrow.isoformat(),
+        response = logged.post(
+            reverse(URL),
+            post_data(
+                amount="10",
+                category=category(user, "Lazer").pk,
+                account=account.pk,
+                date=tomorrow.isoformat(),
+            ),
+            headers=FRAGMENT,
         )
-        assert "Movimentações futuras" in html
+        assert response.status_code == 204
+        tx = Transaction.objects.get()
+        assert tx.status == TransactionStatus.PLANNED  # conta futura: prevista, fora das análises
+        assert tx.date == tomorrow
 
     def test_other_users_ids_are_invalid_choices(
         self, logged: Client, user: Any, other_user: Any, account: Account

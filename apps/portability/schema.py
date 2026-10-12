@@ -12,10 +12,20 @@ from collections.abc import Callable
 from typing import Any
 
 FORMAT = "moneta"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 Payload = dict[str, Any]
-MIGRATIONS: dict[int, Callable[[Payload], Payload]] = {}
+
+
+def _v1_to_v2(payload: Payload) -> Payload:
+    """v2 (Fase 2): movimentações ganham `status`; tudo que existia na v1 era realizado."""
+    for tx in payload.get("transactions", []):
+        if isinstance(tx, dict):
+            tx.setdefault("status", "posted")
+    return payload
+
+
+MIGRATIONS: dict[int, Callable[[Payload], Payload]] = {1: _v1_to_v2}
 SECTIONS = ("accounts", "categories", "tags", "transactions")
 
 

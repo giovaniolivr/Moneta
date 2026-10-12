@@ -31,6 +31,10 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
 ## Regras inegociáveis
 - **Dinheiro em centavos inteiros** (`amount_cents`, `BigIntegerField`). Nunca `float`.
   `amount_cents > 0`; o sinal vem de `kind` (income/expense/transfer).
+- **Previstas nunca contam**: `Transaction.status` é `posted` (realizada) ou `planned` (prevista).
+  Saldos e análises usam só realizadas — `TransactionFilter.status` já vem `"posted"`; qualquer
+  consulta nova direto em `Transaction.objects` precisa filtrar o status. Data futura só em prevista.
+  Previstas viram realizadas apenas por confirmação do usuário (`confirm_transaction`).
 - **Transferências nunca contam** como receita ou despesa nas análises consolidadas.
   Pagamento de fatura de cartão = transferência.
 - Datas de movimentação são `DateField` (data civil, America/Sao_Paulo).

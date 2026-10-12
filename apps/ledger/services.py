@@ -12,7 +12,14 @@ from apps.taxonomy.models import Category, Tag
 from apps.taxonomy.services import get_or_create_tags
 from apps.users.models import User
 
-from .models import Account, AccountKind, PaymentMethod, Transaction, TransactionKind
+from .models import (
+    Account,
+    AccountKind,
+    PaymentMethod,
+    Transaction,
+    TransactionKind,
+    TransactionStatus,
+)
 
 DEFAULT_ACCOUNT_NAME = "Principal"
 
@@ -89,6 +96,7 @@ class TransactionData:
     payment_method: PaymentMethod | str = ""
     description: str = ""
     notes: str = ""
+    status: TransactionStatus | str = TransactionStatus.POSTED
 
 
 def _reject_newly_archived(tx: Transaction, previous_ids: set[uuid.UUID]) -> None:
@@ -109,6 +117,7 @@ def _reject_newly_archived(tx: Transaction, previous_ids: set[uuid.UUID]) -> Non
 
 def _save(tx: Transaction, data: TransactionData, previous_ids: set[uuid.UUID]) -> Transaction:
     tx.kind = data.kind
+    tx.status = data.status
     tx.amount_cents = data.amount_cents
     tx.date = data.date
     tx.account = data.account
@@ -172,11 +181,24 @@ def delete_transaction(tx: Transaction) -> None:
     tx.delete()
 
 
+def confirm_transaction(tx: Transaction, *, today: datetime.date) -> Transaction:
+    """Prevista → realizada. Vencida mantém a data prevista; adiantada (data futura) passa a
+    ter a data de hoje — o dinheiro saiu hoje."""
+    if not tx.is_planned:
+        raise ValidationError("Esta movimentação já está realizada.")
+    tx.status = TransactionStatus.POSTED
+    tx.date = min(tx.date, today)
+    tx.full_clean()
+    tx.save(update_fields=["status", "date", "updated_at"])
+    return tx
+
+
 def transaction_snapshot(tx: Transaction) -> dict[str, Any]:
     """Cópia serializável (JSON) de uma movimentação, para desfazer a exclusão."""
     return {
         "id": str(tx.pk),
         "kind": tx.kind,
+        "status": tx.status,
         "amount_cents": tx.amount_cents,
         "date": tx.date.isoformat(),
         "account": str(tx.account_id),
@@ -208,6 +230,7 @@ def restore_transaction(user: User, snapshot: dict[str, Any]) -> Transaction:
         id=uuid.UUID(snapshot["id"]),
         owner=user,
         kind=snapshot["kind"],
+        status=snapshot.get("status", TransactionStatus.POSTED),
         amount_cents=snapshot["amount_cents"],
         date=datetime.date.fromisoformat(snapshot["date"]),
         account=owned(Account, "account", "conta"),

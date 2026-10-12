@@ -49,8 +49,18 @@ pytest · ruff · mypy (strict)
 - [x] 12. Exportação JSON completa e CSV (Excel pt-BR), importação com prévia (idempotente, tudo ou nada) e backup do SQLite com rotação
 - [x] 13. Polimento: desfazer exclusão, navegação entre meses na dashboard, primeiros passos para quem começa, páginas de erro e acessibilidade (PWA/mobile fica para a etapa de uso real)
 
-**Próximas fases:** planejamento (metas, recorrências, parcelamentos, orçamentos) →
-simulador de investimentos e estratégias de compra → pesquisa de preços → assistente com IA.
+**Fase 2 — planejamento**
+
+- [x] 14. Movimentações previstas × realizadas: data futura vira prevista, tela "Previstas" com "A confirmar", aviso na dashboard; saldos e análises só com realizadas
+- [ ] 15. Recorrências
+- [ ] 16. Parcelamentos no cartão
+- [ ] 17. Orçamentos por categoria
+- [ ] 18. Projeção de saldo e fatura prevista
+- [ ] 19. Metas sobre o saldo de uma conta
+- [ ] 20. Dashboard realizado × previsto
+
+**Próximas fases:** simulador de investimentos e estratégias de compra → pesquisa de preços →
+assistente com IA.
 
 ## Rodando localmente
 
