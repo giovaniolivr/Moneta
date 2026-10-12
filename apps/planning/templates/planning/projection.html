@@ -1,5 +1,5 @@
 {% extends "layouts/app.html" %}
-{% load static ui money %}
+{% load static ui money investments_ui %}
 
 {% block title %}Projeção de saldo{% endblock %}
 
@@ -34,6 +34,17 @@
       <a class="btn btn-secondary btn-sm" href="{% url 'ledger:account_update' card.pk %}" data-drawer>Configurar</a>
     </div>
   {% endfor %}
+
+  {% if include_yield and yielding %}
+    <div class="alert" role="status">
+      {% icon "trending-up" "icon-sm" %}
+      <span class="alert-text">Rendimento estimado até {{ end|date:"d/m" }}: <strong>{{ yield_total|brl }}</strong> ({% for row in yielding %}{{ row.account.name }}: {{ row.account.product.rate_label }}, {{ row.earned|brl }}{% if not forloop.last %}; {% endif %}{% endfor %}). Líquido de IR estimado em {{ projection_ir|percent_from_fraction }} (aportes recentes), sem IOF. <a href="?rendimento=0{% if not include_variable %}&amp;variavel=0{% endif %}">Ver sem rendimento</a></span>
+    </div>
+  {% elif include_yield and yield_missing %}
+    <div class="alert" role="status">{% icon "info" "icon-sm" %}<span class="alert-text">Sem a taxa {{ yield_missing|join:", " }} o rendimento das contas não entra na projeção. <a href="{% url 'investments:index' %}">Atualizar taxas</a></span></div>
+  {% elif not include_yield %}
+    <div class="alert" role="status">{% icon "info" "icon-sm" %}<span class="alert-text">Projeção sem rendimento das contas. <a href="?{% if not include_variable %}variavel=0{% endif %}">Incluir rendimento estimado</a></span></div>
+  {% endif %}
 
   <section class="card chart-card" aria-labelledby="projection-chart-title">
     <div class="chart-header">

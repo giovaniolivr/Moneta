@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 
-from .rates import CdiPercent, Poupanca, Prefixed, Yield
+from .rates import CdiPercent, Poupanca, Prefixed, Yield, annual_to_daily
 from .taxes import EXEMPT, EXEMPT_IR, TAXED, TaxRule
 
 
@@ -58,6 +58,24 @@ class ProductSpec:
                 if selic is None:
                     raise MissingRateError("Selic")
                 return Poupanca(selic)
+
+    def daily_gross_rate(self, *, cdi: Decimal | None, selic: Decimal | None) -> Decimal:
+        """Rendimento bruto por dia útil (fração). Poupança: o mensal espalhado em 21 dias
+        úteis (aproximação — na vida real ela credita no aniversário)."""
+        rate = self.rate_percent if self.rate_percent is not None else Decimal(100)
+        match self.indexer:
+            case Indexer.CDI | Indexer.SELIC:
+                base = cdi if self.indexer == Indexer.CDI else selic
+                if base is None:
+                    raise MissingRateError("CDI" if self.indexer == Indexer.CDI else "Selic")
+                return annual_to_daily(base) * rate / 100
+            case Indexer.PREFIXED:
+                return annual_to_daily(rate / 100)
+            case Indexer.POUPANCA:
+                if selic is None:
+                    raise MissingRateError("Selic")
+                monthly = Poupanca(selic).monthly
+                return annual_to_daily((1 + monthly) ** 12 - 1)
 
     def one_year(
         self, *, cdi: Decimal | None, selic: Decimal | None, start: datetime.date

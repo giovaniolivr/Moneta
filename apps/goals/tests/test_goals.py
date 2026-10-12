@@ -1,6 +1,7 @@
 """Metas: progresso pelo saldo da conta, aporte necessário, ritmo real e capacidade."""
 
 import datetime
+from decimal import Decimal
 from typing import Any
 
 import pytest
@@ -9,7 +10,7 @@ from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.goals.domain.progress import goal_progress, monthly_deltas, months_until
+from apps.goals.domain.progress import goal_progress, months_until, needed_payment
 from apps.goals.models import Goal
 from apps.goals.selectors import goal_rows
 from apps.goals.services import create_goal, update_goal
@@ -30,7 +31,7 @@ FRAGMENT = {"X-Moneta-Fragment": "1"}
 def progress(**kw: Any) -> Any:
     base: dict[str, Any] = {
         "target_cents": 2_000_000,
-        "month_end_balances": [500_000, 600_000, 700_000, 800_000],
+        "monthly_contributions": [100_000, 100_000, 100_000],
         "current_balance_cents": 800_000,
         "monthly_results": [150_000, 120_000, 150_000],
         "today": TODAY,
@@ -40,11 +41,10 @@ def progress(**kw: Any) -> Any:
 
 
 class TestDomain:
-    def test_months_and_deltas(self) -> None:
+    def test_months(self) -> None:
         assert months_until(TODAY, D(2026, 10, 31)) == 1
         assert months_until(TODAY, D(2027, 9, 30)) == 12
         assert months_until(TODAY, D(2025, 1, 1)) == 1  # prazo vencido: o que falta, já
-        assert monthly_deltas([5, 8, 6]) == [3, -2]
 
     def test_on_track(self) -> None:
         p = progress()
@@ -54,7 +54,7 @@ class TestDomain:
         assert p.status == "on_track"
 
     def test_behind_and_beyond_capacity(self) -> None:
-        assert progress(month_end_balances=[500_000, 550_000, 600_000]).status == "behind"
+        assert progress(monthly_contributions=[50_000, 50_000]).status == "behind"
         tight = progress(deadline=D(2027, 1, 31))  # R$ 12 mil em 4 meses = R$ 3 mil/mês
         assert tight.needed_monthly_cents == 300_000
         assert tight.status == "beyond_capacity"
@@ -63,11 +63,27 @@ class TestDomain:
         p = progress(deadline=None)
         assert p.status == "no_deadline"
         assert p.forecast_month == D(2027, 9, 1)  # 12 aportes de R$ 1.000 a partir de outubro
-        assert progress(deadline=None, month_end_balances=[5, 5]).forecast_month is None
+        assert progress(deadline=None, monthly_contributions=[0, 0]).forecast_month is None
 
     def test_no_pace_without_history(self) -> None:
-        p = progress(month_end_balances=[], monthly_results=[])
+        p = progress(monthly_contributions=[], monthly_results=[])
         assert (p.pace_cents, p.history_months, p.status) == (None, 0, "no_pace")
+
+    def test_yield_lowers_needed_payment_and_brings_forecast_forward(self) -> None:
+        rate = Decimal("0.009")  # ~0,9% ao mês líquido
+        with_yield = progress(monthly_rate=rate)
+        # 1,009^12 ≈ 1,11351: 800k rende até ≈ 890.808; faltam ≈ 1.109.192, divididos pelo
+        # fator (1,11351 - 1)/0,009 ≈ 12,612 → P ≈ R$ 879,47 (sem rendimento: R$ 1.000).
+        assert with_yield.needed_monthly_cents == 87_947
+        assert with_yield.needed_monthly_cents < progress().needed_monthly_cents
+        no_deadline = progress(deadline=None, monthly_rate=rate)
+        assert no_deadline.forecast_month is not None
+        assert no_deadline.forecast_month < progress(deadline=None).forecast_month
+        # Só rendimento, sem aportes: ainda chega lá (devagar).
+        assert progress(deadline=None, monthly_contributions=[0], monthly_rate=rate).forecast_month
+
+    def test_needed_payment_without_rate(self) -> None:
+        assert needed_payment(1_200_000, 800_000, 12, Decimal(0)) == 100_000
 
     def test_achieved(self) -> None:
         p = progress(current_balance_cents=2_100_000)

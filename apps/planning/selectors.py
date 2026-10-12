@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
@@ -15,6 +15,9 @@ from apps.analytics.domain.periods import (
     month_start,
     months_between,
 )
+from apps.investments.domain.products import MissingRateError, Taxation
+from apps.investments.models import Series
+from apps.investments.selectors import effective_rates
 from apps.ledger.models import Account, Transaction, TransactionKind, TransactionStatus
 from apps.ledger.selectors import account_balances
 
@@ -125,6 +128,8 @@ class ProjectionData:
     accounts: list[Account]  # na ordem de exibição (cartões por último)
     unconfigured_cards: list[Account]  # cartões sem fechamento/vencimento/pagadora
     variable: VariableEstimate  # gasto variável incluído (vazio se desligado)
+    yielding: list[Account] = field(default_factory=list)  # contas com rendimento estimado
+    yield_missing: list[str] = field(default_factory=list)  # taxa que faltou ("CDI"...)
 
 
 def _planned_events(user: UserLike, end: datetime.date) -> list[Event]:
@@ -167,15 +172,46 @@ def _pending_payment(
     return PendingPayment(billing.card_id, closing, due, max(0, owed - paid))
 
 
+# Projeção de ~3 meses: aportes recentes ⇒ alíquota de até 180 dias (a mais alta, conservadora).
+PROJECTION_IR = Decimal("0.225")
+
+
+def _daily_net_rates(
+    user: UserLike, accounts: list[Account]
+) -> tuple[dict[uuid.UUID, Decimal], list[Account], list[str]]:
+    rates = effective_rates(user)
+    cdi, selic = rates[Series.CDI].annual, rates[Series.SELIC].annual
+    daily: dict[uuid.UUID, Decimal] = {}
+    yielding, missing = [], []
+    for account in accounts:
+        product = account.product
+        if product is None or account.is_liability:
+            continue
+        try:
+            gross = product.spec.daily_gross_rate(cdi=cdi, selic=selic)
+        except MissingRateError as exc:
+            missing.append(str(exc))
+            continue
+        taxed = product.spec.taxation == Taxation.TAXED
+        daily[account.pk] = gross * (1 - PROJECTION_IR) if taxed else gross
+        yielding.append(account)
+    return daily, yielding, sorted(set(missing))
+
+
 def projection_data(
-    user: UserLike, today: datetime.date, *, days: int = 92, include_variable: bool = True
+    user: UserLike,
+    today: datetime.date,
+    *,
+    days: int = 92,
+    include_variable: bool = True,
+    include_yield: bool = True,
 ) -> ProjectionData:
     """Com `include_variable`, soma o gasto variável médio (dia a dia, a partir de amanhã)."""
     end = today + datetime.timedelta(days=days)
     opening = account_balances(user, on=today)
     accounts = [
         a
-        for a in Account.objects.for_user(user).select_related("payment_account")
+        for a in Account.objects.for_user(user).select_related("payment_account", "product")
         if not a.is_archived or opening.get(a.pk, 0) != 0
     ]
     accounts.sort(key=lambda a: (a.is_liability, a.name.lower()))
@@ -195,6 +231,9 @@ def projection_data(
         while day <= end:
             events.append(Event(day, account_id, -daily))
             day += datetime.timedelta(days=1)
+    yield_rates, yielding, missing = (
+        _daily_net_rates(user, accounts) if include_yield else ({}, [], [])
+    )
     projection = project(
         today=today,
         end=end,
@@ -202,9 +241,10 @@ def projection_data(
         events=events,
         billings=billings,
         pending=pending,
+        daily_rates=yield_rates,
     )
     unconfigured = [a for a in accounts if a.is_liability and not a.has_billing]
-    return ProjectionData(projection, accounts, unconfigured, variable)
+    return ProjectionData(projection, accounts, unconfigured, variable, yielding, missing)
 
 
 # Gasto variável e mês realizado vs previsto -------------------------------------

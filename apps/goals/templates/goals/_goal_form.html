@@ -11,7 +11,7 @@
       {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
     </div>
   {% endfor %}
-  <p class="field-help">O progresso é o saldo dessa conta; os aportes são as transferências que você já faz para ela. Rendimento ainda não entra na estimativa.</p>
+  <p class="field-help">O progresso é o saldo dessa conta; os aportes são as transferências que você já faz para ela. Se a conta tiver um produto (Investimentos), o rendimento estimado entra no cálculo.</p>
   <div class="form-actions form-actions-single">
     <button class="btn btn-primary" type="submit">{% if goal %}Salvar alterações{% else %}Criar meta{% endif %}</button>
   </div>

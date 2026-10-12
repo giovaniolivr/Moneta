@@ -21,6 +21,7 @@ from apps.ledger.views import category_groups
 from .forms import BudgetForm, InstallmentPlanForm, RecurrenceForm
 from .models import Budget, Recurrence
 from .selectors import (
+    PROJECTION_IR,
     budget_rows,
     list_budgets,
     list_installment_plans,
@@ -228,7 +229,10 @@ def projection(request: AuthenticatedHttpRequest) -> HttpResponse:
     today = timezone.localdate()
     materialize(request.user, today=today)
     include_variable = request.GET.get("variavel") != "0"
-    data = projection_data(request.user, today, include_variable=include_variable)
+    include_yield = request.GET.get("rendimento") != "0"
+    data = projection_data(
+        request.user, today, include_variable=include_variable, include_yield=include_yield
+    )
     proj = data.projection
     end = proj.days[-1]
     checkpoints = [today]
@@ -287,5 +291,10 @@ def projection(request: AuthenticatedHttpRequest) -> HttpResponse:
             "today": today,
             "include_variable": include_variable,
             "variable": data.variable,
+            "include_yield": include_yield,
+            "yielding": [{"account": a, "earned": proj.yields.get(a.pk, 0)} for a in data.yielding],
+            "yield_total": sum(proj.yields.values()),
+            "yield_missing": data.yield_missing,
+            "projection_ir": PROJECTION_IR,
         },
     )

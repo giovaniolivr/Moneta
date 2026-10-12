@@ -129,6 +129,9 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
   `Yield`/`TaxRule` com as taxas efetivas. `Account.product` (não vale para cartão). Modelos
   prontos em `PRESETS` só preenchem o formulário; taxa que depende do banco vem em branco.
   Export no formato v8.
+- Rendimento estimado: `project(daily_rates=)` (planning) com taxas de `ProductSpec.daily_gross_rate`;
+  metas usam `goal_progress(monthly_rate=)`; aporte de meta = transferências (não variação de
+  saldo, que incluiria os rendimentos lançados).
 - Exclusão de movimentação é desfazível: `transaction_snapshot()` vai para a sessão e a mensagem
   ganha o botão "Desfazer" (`done(..., extra_tags="undo")` → `ledger:transaction_restore`).
 - Dashboard: `?mes=AAAA-MM` escolhe um mês (navegação ◂ ▸, nunca futuro); usuário sem nenhuma

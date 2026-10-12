@@ -1,11 +1,12 @@
 """Andamento de uma meta (Python puro, sem Django).
 
-O progresso é o saldo da conta da meta (decisão da Fase 2). Rendimento ainda não é estimado
-(Fase 3): projeções usam só os aportes.
+O progresso é o saldo da conta da meta (decisão da Fase 2). Aporte = transferências que
+entram menos as que saem da conta, por mês — o rendimento NÃO entra no aporte (senão os
+rendimentos que o usuário já lança seriam contados de novo). O rendimento estimado da conta
+(`monthly_rate`, líquido de IR) entra à parte, com juros compostos mensais.
 """
 
 import datetime
-import itertools
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -16,6 +17,7 @@ from apps.analytics.domain.metrics import monthly_average, percent
 from apps.analytics.domain.periods import add_months, month_start
 
 Status = Literal["achieved", "on_track", "behind", "beyond_capacity", "no_pace", "no_deadline"]
+MAX_FORECAST_MONTHS = 1200
 
 
 def months_until(today: datetime.date, deadline: datetime.date) -> int:
@@ -23,9 +25,17 @@ def months_until(today: datetime.date, deadline: datetime.date) -> int:
     return max(1, (deadline.year - today.year) * 12 + deadline.month - today.month + 1)
 
 
-def monthly_deltas(month_end_balances: Sequence[int]) -> list[int]:
-    """Variação do saldo mês a mês (saldos no fim de meses consecutivos)."""
-    return [b - a for a, b in itertools.pairwise(month_end_balances)]
+def needed_payment(remaining_cents: int, balance_cents: int, months: int, rate: Decimal) -> int:
+    """Aporte mensal para chegar a `balance + remaining` em `months`, rendendo `rate` ao mês.
+
+    Valor futuro: saldo·(1+r)^n + aporte·((1+r)^n - 1)/r = alvo. Sem rendimento: falta / n.
+    """
+    target = Decimal(balance_cents + remaining_cents)
+    if rate <= 0:
+        return max(0, math.ceil(remaining_cents / months))
+    growth = (1 + rate) ** months
+    payment = (target - Decimal(balance_cents) * growth) * rate / (growth - 1)
+    return max(0, math.ceil(payment))
 
 
 @dataclass(frozen=True)
@@ -34,9 +44,10 @@ class GoalProgress:
     balance_cents: int
     today: datetime.date
     deadline: datetime.date | None
-    pace_cents: int | None  # aporte médio mensal recente na conta (None: sem meses suficientes)
+    pace_cents: int | None  # aporte médio mensal recente (None: sem meses suficientes)
     capacity_cents: int | None  # resultado médio mensal (receitas - despesas), meses fechados
     history_months: int
+    monthly_rate: Decimal = Decimal(0)  # rendimento estimado líquido ao mês (fração)
 
     @property
     def remaining_cents(self) -> int:
@@ -55,17 +66,26 @@ class GoalProgress:
     def needed_monthly_cents(self) -> int | None:
         if self.deadline is None or self.remaining_cents == 0:
             return None
-        return math.ceil(self.remaining_cents / (self.months_left or 1))
+        return needed_payment(
+            self.remaining_cents, self.balance_cents, self.months_left or 1, self.monthly_rate
+        )
 
     @property
     def forecast_month(self) -> datetime.date | None:
-        """Mês em que alcança no ritmo atual de aportes (None se não há ritmo positivo)."""
+        """Mês em que alcança no ritmo atual (aportes + rendimento); None se não chega."""
         if self.remaining_cents == 0:
             return month_start(self.today)
-        if not self.pace_cents or self.pace_cents <= 0:
+        pace = Decimal(self.pace_cents or 0)
+        if pace <= 0 and self.monthly_rate <= 0:
             return None
-        months = math.ceil(self.remaining_cents / self.pace_cents)
-        return add_months(month_start(self.today), months - 1)
+        balance = Decimal(self.balance_cents)
+        for month in range(1, MAX_FORECAST_MONTHS + 1):
+            balance = balance * (1 + self.monthly_rate) + pace
+            if balance >= self.target_cents:
+                return add_months(month_start(self.today), month - 1)
+            if balance <= 0:
+                return None
+        return None
 
     @property
     def overdue(self) -> bool:
@@ -88,21 +108,22 @@ class GoalProgress:
 def goal_progress(
     *,
     target_cents: int,
-    month_end_balances: Sequence[int],
+    monthly_contributions: Sequence[int],
     current_balance_cents: int,
     monthly_results: Sequence[int],
     today: datetime.date,
     deadline: datetime.date | None,
+    monthly_rate: Decimal = Decimal(0),
 ) -> GoalProgress:
-    """`month_end_balances`: saldo da conta no fim dos últimos meses fechados (+ o anterior a
-    eles, para calcular a variação). `monthly_results`: resultado de cada mês fechado."""
-    deltas = monthly_deltas(month_end_balances)
+    """`monthly_contributions`: aporte líquido de cada mês fechado recente.
+    `monthly_results`: resultado (receitas - despesas) de cada mês fechado."""
     return GoalProgress(
         target_cents=target_cents,
         balance_cents=current_balance_cents,
         today=today,
         deadline=deadline,
-        pace_cents=monthly_average(deltas),
+        pace_cents=monthly_average(list(monthly_contributions)),
         capacity_cents=monthly_average(list(monthly_results)),
-        history_months=len(deltas),
+        history_months=len(monthly_contributions),
+        monthly_rate=monthly_rate,
     )

@@ -11,9 +11,12 @@ Parte dos saldos realizados de hoje e aplica:
 import calendar
 import datetime
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from decimal import Decimal
 from uuid import UUID
+
+from apps.investments.domain.calendar import is_business_day
 
 
 def day_in_month(year: int, month: int, day: int) -> datetime.date:
@@ -83,6 +86,7 @@ class Projection:
     days: list[datetime.date]
     balances: dict[UUID, list[int]]  # saldo de cada conta ao fim de cada dia
     statements: list[Statement] = field(default_factory=list)
+    yields: dict[UUID, int] = field(default_factory=dict)  # rendimento estimado no período
 
     def balance_on(self, account_id: UUID, day: datetime.date) -> int:
         index = min(max((day - self.days[0]).days, 0), len(self.days) - 1)
@@ -108,7 +112,13 @@ def project(
     events: Iterable[Event],
     billings: Sequence[Billing] = (),
     pending: Sequence[PendingPayment] = (),
+    daily_rates: Mapping[UUID, Decimal] | None = None,
 ) -> Projection:
+    """`daily_rates`: rendimento líquido por dia útil de cada conta (fração), aplicado no fim do
+    dia sobre o saldo positivo. Frações de centavo acumulam até virar centavo."""
+    rates = daily_rates or {}
+    carry: dict[UUID, Decimal] = defaultdict(Decimal)
+    earned: dict[UUID, int] = defaultdict(int)
     by_day: dict[datetime.date, list[Event]] = defaultdict(list)
     for event in events:
         by_day[max(event.day, today)].append(event)
@@ -155,9 +165,18 @@ def project(
             cycle_planned[billing.card_id] = 0
             if owed and due <= end:
                 payments[due].append((billing, owed))
+        if rates and is_business_day(day):
+            for account, rate in rates.items():
+                if balances.get(account, 0) > 0:
+                    carry[account] += balances[account] * rate
+                    whole = int(carry[account])
+                    if whole:
+                        balances[account] += whole
+                        earned[account] += whole
+                        carry[account] -= whole
         days.append(day)
         for account in series:
             series[account].append(balances.get(account, 0))
         day += datetime.timedelta(days=1)
     statements.sort(key=lambda s: (s.card_id, s.closing))
-    return Projection(days, series, statements)
+    return Projection(days, series, statements, dict(earned))

@@ -25,12 +25,13 @@
                 {% else %}{% icon "info" "icon-sm" %}{% if p.forecast_month %}No ritmo atual ({{ p.pace_cents|brl }}/mês), chega lá em {{ p.forecast_month|date:"F/Y"|lower }}{% else %}Sem aportes recentes nessa conta para estimar quando chega lá{% endif %}
                 {% endif %}
               </span>
+              {% if row.rate_note %}<span class="text-sm muted">Rendimento estimado: {{ row.rate_note }}</span>{% endif %}
             </a>
           </li>
         {% endwith %}
       {% endfor %}
     </ul>
-    <p class="text-sm muted">Aporte = quanto o saldo da conta cresceu por mês, em média, nos últimos meses fechados. Capacidade = suas receitas menos despesas, em média, nos mesmos meses. Rendimento ainda não entra na conta.</p>
+    <p class="text-sm muted">Aporte = transferências que entram na conta menos as que saem, em média, nos últimos meses fechados. Capacidade = suas receitas menos despesas, em média, nos mesmos meses. Com produto na conta, o aporte necessário e a data estimada já contam o rendimento estimado (juros compostos).</p>
   {% else %}
     <div class="empty-state">
       {% icon "piggy-bank" %}
