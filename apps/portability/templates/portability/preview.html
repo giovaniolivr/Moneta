@@ -1,0 +1,38 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Prévia da importação{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Prévia da importação</h1>
+    <p>{{ filename }} · nada foi gravado ainda.</p>
+  </div>
+</div>
+
+<section class="card stack" aria-labelledby="preview-title">
+  <h2 id="preview-title">O que vai acontecer</h2>
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead><tr><th scope="col">Tipo</th><th scope="col">Novos</th><th scope="col">Atualizados</th><th scope="col">Sem alteração</th></tr></thead>
+      <tbody>
+        {% for label, counts in report.sections %}
+          <tr><th scope="row">{{ label }}</th><td>{{ counts.created }}</td><td>{{ counts.updated }}</td><td>{{ counts.unchanged }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if report.changes %}
+    <p class="text-sm muted">Itens com o mesmo nome de algo que você já tem (ex.: a categoria “Alimentação”) são reaproveitados, não duplicados. Nada que não esteja no arquivo será apagado.</p>
+  {% else %}
+    <div class="alert" role="status">{% icon "info" "icon-sm" %}Tudo neste arquivo já está igual aos seus dados. Não há nada para importar.</div>
+  {% endif %}
+  <div class="page-actions">
+    {% if report.changes %}
+      <form method="post" action="{% url 'portability:import_confirm' %}">{% csrf_token %}<button class="btn btn-primary" type="submit">Importar</button></form>
+    {% endif %}
+    <form method="post" action="{% url 'portability:import_cancel' %}">{% csrf_token %}<button class="btn btn-ghost" type="submit">Cancelar</button></form>
+  </div>
+</section>
+{% endblock %}

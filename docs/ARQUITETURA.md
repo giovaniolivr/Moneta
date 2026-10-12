@@ -400,6 +400,18 @@ Mobile: navegação inferior (Dashboard · Movimentações · + · Mais), KPIs e
   (`sqlite3.Connection.backup`), rotação de N cópias. Agendável no Agendador de Tarefas do Windows.
 - Migração SQLite → Postgres: export JSON → import, já testado pelo mesmo mecanismo.
 
+Implementação (`apps/portability`):
+- `schema.py`: envelope, versão e `MIGRATIONS[v]` (converte arquivos da versão `v` para `v + 1`).
+- Importação (`services.import_payload`): upsert por UUID; sem o UUID, conta/categoria/tag com o
+  mesmo nome normalizado é **reaproveitada** (arquivo de outra instalação não duplica "Alimentação").
+  O arquivo vence nas diferenças; nada é apagado; tudo-ou-nada com **todos** os erros listados;
+  UUID de outro usuário do servidor é recusado. A tela faz uma simulação (`dry_run`) como prévia
+  e só grava na confirmação.
+- CSV: `;`, vírgula decimal, BOM, datas dd/mm/aaaa; "Valor" sempre positivo (o efeito vem de
+  "Tipo"); células que começam com `= + - @` recebem `'` (injeção de fórmula).
+- O backup do arquivo SQLite é só por linha de comando: num servidor multiusuário o banco tem dados
+  de todos — na web, cada usuário baixa apenas o próprio JSON.
+
 ## 9. Testes
 
 | Nível | O quê | Ferramenta |
@@ -431,7 +443,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 9 ✅ | Dashboard: KPIs + gráficos + drill-down | clique leva à lista filtrada |
 | 10 ✅ | Insights (regras + "dados insuficientes") | cada regra com teste |
 | 11 ✅ | Seções secundárias da dashboard (tags, formas de pgto, comparativos) | comparativo por categoria com média pro-rata; variação vs período anterior |
-| 12 | Export/import JSON, CSV, comando de backup | round-trip preserva totais |
+| 12 ✅ | Export/import JSON, CSV, comando de backup | round-trip preserva totais |
 | 13 | Polimento: estados vazios, acessibilidade, PWA (manifest + ícone) | usável diariamente |
 
 ## 11. Preparação para os módulos futuros

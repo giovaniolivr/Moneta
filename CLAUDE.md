@@ -79,6 +79,10 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
 - Cuidado com `@layer`: regras em `layout` perdem para `components` independentemente da
   especificidade; sobrescritas de componentes vão na camada `components`.
 - Menu lateral recolhível (`data-sidebar="collapsed"` no `<html>`, salvo no localStorage).
+- Portabilidade (`apps/portability`): mudou um modelo de dados do usuário? Atualize export
+  (`selectors.export_payload`), import (`services._Importer`) e, se o formato mudar, suba
+  `SCHEMA_VERSION` com um migrador em `schema.MIGRATIONS`. O teste de round-trip deve continuar
+  verde. `manage.py backup` copia o SQLite (API de backup online) com rotação.
 - Dev: login automático no `runserver` (só DEBUG + localhost, `apps/core/dev_autologin.py`).
 
 ## Estrutura

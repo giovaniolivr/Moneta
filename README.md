@@ -46,7 +46,7 @@ pytest · ruff · mypy (strict)
 - [x] 9. Dashboard com gráficos acessíveis, tabela equivalente e drill-down para a lista
 - [x] 10. Análises automáticas (resumo, acima da média, tendência, concentração, dia da semana) com evidência numérica e aviso de dados insuficientes
 - [x] 11. Seções secundárias da dashboard: comparativo mês a mês por categoria (com tendência e média), variação de tags e formas de pagamento
-- [ ] 12. Exportação, importação e backup
+- [x] 12. Exportação JSON completa e CSV (Excel pt-BR), importação com prévia (idempotente, tudo ou nada) e backup do SQLite com rotação
 - [ ] 13. Polimento, acessibilidade e PWA
 
 **Próximas fases:** planejamento (metas, recorrências, parcelamentos, orçamentos) →
@@ -71,6 +71,14 @@ crie seu usuário com `createsuperuser`.
 
 Acesse http://127.0.0.1:8000 — em desenvolvimento o login é automático (somente localhost; desative com
 `DEV_AUTO_LOGIN=0` no `.env`). Não há cadastro público.
+
+## Backup e portabilidade
+
+- **Tela Dados** (`/dados/`): exportar tudo em JSON, movimentações em CSV e importar um JSON com
+  prévia. Na lista de movimentações, "Exportar CSV" respeita os filtros aplicados.
+- **Backup do banco:** `uv run python manage.py backup` grava uma cópia consistente em `backups/`
+  (mantém as 10 mais recentes; `--destino PASTA`, `--manter N`). Para automatizar no Windows, crie
+  uma tarefa diária no Agendador de Tarefas com esse comando, iniciando na pasta do projeto.
 
 ## Qualidade
 

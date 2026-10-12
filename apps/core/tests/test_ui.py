@@ -48,7 +48,8 @@ class TestHome:
         html = client.get(reverse("home")).content.decode()
         assert "Nenhuma movimentação ainda" in html
         assert "Principal" in html
-        assert "em breve" in html  # páginas ainda não construídas aparecem desabilitadas
+        assert "em breve" not in html  # todas as páginas do menu já existem
+        assert f'href="{reverse("portability:index")}"' in html
 
     def test_shows_balances_and_signed_amounts(self, client: Client, user: Any) -> None:
         account = ensure_default_account(user)

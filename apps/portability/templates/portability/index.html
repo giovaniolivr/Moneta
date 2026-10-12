@@ -1,0 +1,61 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Dados{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Dados</h1>
+    <p>Seus dados são seus: exporte, importe e faça backup quando quiser.</p>
+  </div>
+</div>
+
+<div class="data-grid">
+  <section class="card stack" aria-labelledby="export-title">
+    <h2 id="export-title">Exportar</h2>
+    <ul class="data-counts">
+      {% for label, count in counts %}<li><strong>{{ count }}</strong> <span class="muted">{{ label|lower }}</span></li>{% endfor %}
+    </ul>
+    <div class="data-option">
+      <a class="btn btn-primary" href="{% url 'portability:export_json' %}" download>{% icon "database" "icon-sm" %}Exportar tudo (JSON)</a>
+      <p class="text-sm muted">Cópia completa — contas, categorias, tags e movimentações. É o arquivo para guardar como backup ou levar para outra instalação do Moneta.</p>
+    </div>
+    <div class="data-option">
+      <a class="btn btn-secondary" href="{% url 'portability:transactions_csv' %}?periodo=tudo" download>Movimentações em CSV</a>
+      <p class="text-sm muted">Para Excel ou Google Planilhas. Para exportar só um recorte, use “Exportar CSV” na lista de movimentações com os filtros aplicados.</p>
+    </div>
+  </section>
+
+  <section class="card stack" aria-labelledby="import-title">
+    <h2 id="import-title">Importar</h2>
+    <p class="text-sm muted">Envie um arquivo exportado pelo Moneta. Você verá uma prévia antes de qualquer alteração. Importar não apaga nada: itens já existentes são atualizados e importar o mesmo arquivo de novo não duplica.</p>
+    {% if errors %}
+      <div class="alert alert-error" role="alert">
+        {% icon "circle-alert" "icon-sm" %}
+        <div>
+          <p>Nada foi importado. Corrija o arquivo e tente de novo:</p>
+          <ul class="error-list">{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
+        </div>
+      </div>
+    {% endif %}
+    <form class="stack" method="post" action="{% url 'portability:import_preview' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="field">
+        <label for="{{ form.file.id_for_label }}">{{ form.file.label }}</label>
+        <input class="input input-file" type="file" name="{{ form.file.html_name }}" id="{{ form.file.id_for_label }}" accept=".json,application/json" required>
+        {% for error in form.file.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        <p class="text-sm muted">Até {{ max_mb }} MB.</p>
+      </div>
+      <div><button class="btn btn-secondary" type="submit">Ver prévia</button></div>
+    </form>
+  </section>
+
+  <section class="card stack" aria-labelledby="backup-title">
+    <h2 id="backup-title">Backup do banco</h2>
+    <p class="text-sm muted">Cópia consistente do arquivo do banco (SQLite), feita no computador onde o Moneta roda. Mantém as 10 cópias mais recentes na pasta <code>backups/</code>.</p>
+    <pre class="code-block"><code>uv run python manage.py backup</code></pre>
+    <p class="text-sm muted">Para automatizar no Windows, crie uma tarefa diária no Agendador de Tarefas executando esse comando na pasta do projeto. Opções: <code>--destino PASTA</code> e <code>--manter N</code>.</p>
+  </section>
+</div>
+{% endblock %}

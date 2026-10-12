@@ -10,5 +10,6 @@ urlpatterns = [
     path("sair/", auth_views.LogoutView.as_view(), name="logout"),
     path("", include("apps.ledger.urls")),
     path("", include("apps.taxonomy.urls")),
+    path("", include("apps.portability.urls")),
     path("admin/", admin.site.urls),
 ]
