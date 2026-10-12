@@ -18,7 +18,7 @@ pytest · ruff · mypy (strict)
 **Fase 1 — MVP (registro financeiro e dashboard)**
 
 - [x] 0. Esqueleto: settings por ambiente, usuário customizado, login obrigatório, CSP, testes
-- [ ] 1. Valores monetários (centavos ↔ R$)
+- [x] 1. Valores monetários (centavos ↔ R$): parser tolerante, formatação BRL, campo de formulário
 - [ ] 2. Contas e categorias
 - [ ] 3. Tags com normalização, aliases e mesclagem
 - [ ] 4. Movimentações (receitas, despesas, transferências)

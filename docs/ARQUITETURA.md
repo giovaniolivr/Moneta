@@ -367,7 +367,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | # | Entrega | Pronto quando |
 |---|---------|---------------|
 | 0 ✅ | Esqueleto: uv, Django, settings divididos, ruff/mypy/pytest, `.gitignore`, `core`, `users`, login | `pytest` verde; login funciona; nenhuma página acessível sem login |
-| 1 | `core.money` + filtros de template | testes de parse/format BRL |
+| 1 ✅ | `core.money` + filtros de template | testes de parse/format BRL |
 | 2 | Contas e categorias (models, seed padrão, admin) | seed cria categorias para um usuário novo |
 | 3 | Tags + normalização + aliases + merge | testes de normalização e merge |
 | 4 | Transaction + services (CRUD, validações, transferências) | regras da §4 testadas |
