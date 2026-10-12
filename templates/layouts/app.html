@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block body %}
-<a class="sr-only" href="#conteudo">Pular para o conteúdo</a>
+<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
 <div class="app">
   <aside class="sidebar" aria-label="Menu principal">
     <div class="sidebar-top">
@@ -61,11 +61,11 @@
     </span>
   </header>
 
-  <main class="main" id="conteudo">
+  <main class="main" id="conteudo" tabindex="-1">
     {% if messages %}
       <div class="stack mb-4">
         {% for message in messages %}
-          <div class="alert alert-{{ message.level_tag }}" role="status">{% if message.level_tag == "success" %}{% icon "circle-check" "icon-sm" %}{% elif message.level_tag == "error" %}{% icon "circle-alert" "icon-sm" %}{% endif %}{{ message }}</div>
+          <div class="alert alert-{{ message.level_tag }}" role="status">{% if message.level_tag == "success" %}{% icon "circle-check" "icon-sm" %}{% elif message.level_tag == "error" %}{% icon "circle-alert" "icon-sm" %}{% endif %}<span class="alert-text">{{ message }}</span>{% if "undo" in message.extra_tags %}<form class="alert-action" method="post" action="{% url 'ledger:transaction_restore' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-ghost btn-sm" type="submit">Desfazer</button></form>{% endif %}</div>
         {% endfor %}
       </div>
     {% endif %}

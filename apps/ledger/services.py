@@ -2,12 +2,13 @@ import datetime
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import RestrictedError
 
-from apps.taxonomy.models import Category
+from apps.taxonomy.models import Category, Tag
 from apps.taxonomy.services import get_or_create_tags
 from apps.users.models import User
 
@@ -169,6 +170,57 @@ def update_transaction(tx: Transaction, data: TransactionData) -> Transaction:
 
 def delete_transaction(tx: Transaction) -> None:
     tx.delete()
+
+
+def transaction_snapshot(tx: Transaction) -> dict[str, Any]:
+    """Cópia serializável (JSON) de uma movimentação, para desfazer a exclusão."""
+    return {
+        "id": str(tx.pk),
+        "kind": tx.kind,
+        "amount_cents": tx.amount_cents,
+        "date": tx.date.isoformat(),
+        "account": str(tx.account_id),
+        "destination_account": str(tx.destination_account_id or ""),
+        "category": str(tx.category_id or ""),
+        "tags": [str(pk) for pk in tx.tags.values_list("pk", flat=True)],
+        "payment_method": tx.payment_method,
+        "description": tx.description,
+        "notes": tx.notes,
+    }
+
+
+@transaction.atomic
+def restore_transaction(user: User, snapshot: dict[str, Any]) -> Transaction:
+    """Recria uma movimentação excluída, com o mesmo id. Contas/categorias precisam ainda
+    existir; tags removidas nesse meio-tempo são ignoradas."""
+    if Transaction.objects.filter(pk=snapshot["id"]).exists():
+        raise ValidationError("Esta movimentação já foi restaurada.")
+
+    def owned(model: type[Account] | type[Category], key: str, label: str) -> Any:
+        if not snapshot[key]:
+            return None
+        obj = model.objects.for_user(user).filter(pk=snapshot[key]).first()
+        if obj is None:
+            raise ValidationError(f"Não foi possível desfazer: a {label} não existe mais.")
+        return obj
+
+    tx = Transaction(
+        id=uuid.UUID(snapshot["id"]),
+        owner=user,
+        kind=snapshot["kind"],
+        amount_cents=snapshot["amount_cents"],
+        date=datetime.date.fromisoformat(snapshot["date"]),
+        account=owned(Account, "account", "conta"),
+        destination_account=owned(Account, "destination_account", "conta de destino"),
+        category=owned(Category, "category", "categoria"),
+        payment_method=snapshot["payment_method"],
+        description=snapshot["description"],
+        notes=snapshot["notes"],
+    )
+    tx.full_clean()
+    tx.save()
+    tx.tags.set(Tag.objects.for_user(user).filter(pk__in=snapshot["tags"]))
+    return tx
 
 
 def delete_account(account: Account) -> None:

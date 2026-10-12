@@ -15,7 +15,7 @@
   <section class="card stack" aria-labelledby="export-title">
     <h2 id="export-title">Exportar</h2>
     <ul class="data-counts">
-      {% for label, count in counts %}<li><strong>{{ count }}</strong> <span class="muted">{{ label|lower }}</span></li>{% endfor %}
+      {% for count, singular, plural in counts %}<li><strong>{{ count }}</strong> <span class="muted">{% if count == 1 %}{{ singular }}{% else %}{{ plural }}{% endif %}</span></li>{% endfor %}
     </ul>
     <div class="data-option">
       <a class="btn btn-primary" href="{% url 'portability:export_json' %}" download>{% icon "database" "icon-sm" %}Exportar tudo (JSON)</a>

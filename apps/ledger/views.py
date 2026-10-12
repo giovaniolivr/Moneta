@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
-from apps.core.drawer import done, render_drawer
+from apps.core.drawer import done, render_drawer, safe_next
 from apps.core.forms import apply_service_errors
 from apps.core.http import AuthenticatedHttpRequest
 from apps.core.money import format_brl
@@ -46,12 +46,15 @@ from .services import (
     create_transactions,
     delete_account,
     delete_transaction,
+    restore_transaction,
     set_account_archived,
+    transaction_snapshot,
     update_account,
     update_transaction,
 )
 
 PAGE_SIZE = 50
+UNDO_SESSION_KEY = "ledger_undo_delete"
 
 
 # Formulário (criar / editar) ----------------------------------------------------
@@ -144,8 +147,27 @@ def transaction_update(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> Http
 def transaction_delete(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpResponse:
     tx = get_object_or_404(list_transactions(request.user), pk=pk)
     label = f"{tx.get_kind_display()} de {format_brl(tx.amount_cents)}"
+    request.session[UNDO_SESSION_KEY] = transaction_snapshot(tx)
     delete_transaction(tx)
-    return done(request, f"{label} excluída.", fallback="ledger:transaction_list")
+    return done(
+        request, f"{label} excluída.", fallback="ledger:transaction_list", extra_tags="undo"
+    )
+
+
+@require_POST
+def transaction_restore(request: AuthenticatedHttpRequest) -> HttpResponse:
+    """Desfaz a última exclusão de movimentação desta sessão."""
+    snapshot = request.session.pop(UNDO_SESSION_KEY, None)
+    if snapshot is None:
+        messages.error(request, "Não há exclusão para desfazer.")
+    else:
+        try:
+            restore_transaction(request.user, snapshot)
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
+        else:
+            messages.success(request, "Exclusão desfeita.")
+    return redirect(safe_next(request) or "ledger:transaction_list")
 
 
 # Lista -------------------------------------------------------------------------

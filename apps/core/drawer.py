@@ -42,18 +42,22 @@ def render_drawer(
     return response
 
 
-def _safe_next(request: HttpRequest) -> str:
+def safe_next(request: HttpRequest) -> str:
     next_url = request.POST.get("next") or request.GET.get("next") or ""
     if url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
         return next_url
     return ""
 
 
-def done(request: HttpRequest, message: str, *, fallback: str) -> HttpResponse:
-    """Ação concluída: fecha o painel (204) ou redireciona (`next` seguro ou `fallback`)."""
-    messages.success(request, message)
+def done(
+    request: HttpRequest, message: str, *, fallback: str, extra_tags: str = ""
+) -> HttpResponse:
+    """Ação concluída: fecha o painel (204) ou redireciona (`next` seguro ou `fallback`).
+
+    `extra_tags="undo"` mostra o botão "Desfazer" na mensagem (ver `layouts/app.html`)."""
+    messages.success(request, message, extra_tags=extra_tags)
     if is_fragment(request):
         response = HttpResponse(status=204)
         response[EVENT_HEADER] = "done"
         return response
-    return redirect(_safe_next(request) or fallback)
+    return redirect(safe_next(request) or fallback)

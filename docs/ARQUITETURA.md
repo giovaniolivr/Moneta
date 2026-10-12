@@ -444,7 +444,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 10 ✅ | Insights (regras + "dados insuficientes") | cada regra com teste |
 | 11 ✅ | Seções secundárias da dashboard (tags, formas de pgto, comparativos) | comparativo por categoria com média pro-rata; variação vs período anterior |
 | 12 ✅ | Export/import JSON, CSV, comando de backup | round-trip preserva totais |
-| 13 | Polimento: estados vazios, acessibilidade, PWA (manifest + ícone) | usável diariamente |
+| 13 ✅ | Polimento: estados vazios, acessibilidade, desfazer exclusão, navegação ◂ ▸ entre meses (PWA adiado para a etapa de uso real) | usável diariamente |
 
 ## 11. Preparação para os módulos futuros
 

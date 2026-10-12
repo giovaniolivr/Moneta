@@ -47,7 +47,7 @@ pytest · ruff · mypy (strict)
 - [x] 10. Análises automáticas (resumo, acima da média, tendência, concentração, dia da semana) com evidência numérica e aviso de dados insuficientes
 - [x] 11. Seções secundárias da dashboard: comparativo mês a mês por categoria (com tendência e média), variação de tags e formas de pagamento
 - [x] 12. Exportação JSON completa e CSV (Excel pt-BR), importação com prévia (idempotente, tudo ou nada) e backup do SQLite com rotação
-- [ ] 13. Polimento, acessibilidade e PWA
+- [x] 13. Polimento: desfazer exclusão, navegação entre meses na dashboard, primeiros passos para quem começa, páginas de erro e acessibilidade (PWA/mobile fica para a etapa de uso real)
 
 **Próximas fases:** planejamento (metas, recorrências, parcelamentos, orçamentos) →
 simulador de investimentos e estratégias de compra → pesquisa de preços → assistente com IA.

@@ -41,6 +41,7 @@ PERIODS: list[tuple[str, str]] = [
     ("ano", "Este ano"),
 ]
 DEFAULT_PERIOD = "mes"
+MONTH_PERIOD = "mes-especifico"  # mês escolhido pela navegação ◂ ▸ (nenhuma aba ativa)
 HISTORY_MONTHS = 12  # histórico máximo usado pelas análises automáticas
 MONTH_ABBR = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 
@@ -96,6 +97,10 @@ class Dashboard:
     has_data: bool
     insights: list[Insight] = field(default_factory=list)
     month_comparison: MonthComparison | None = None
+    is_new_user: bool = False  # nenhuma receita/despesa ainda: tela de primeiros passos
+    month: datetime.date | None = None  # período de um mês: navegação ◂ ▸
+    previous_month: datetime.date | None = None
+    next_month: datetime.date | None = None
     extras: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -325,12 +330,37 @@ def build_insights(
     return evaluate(ctx)
 
 
+def parse_month(value: str, today: datetime.date) -> datetime.date | None:
+    """ "2026-08" → 1º/ago/2026. Inválido → None; meses futuros viram o mês atual."""
+    try:
+        month = datetime.date.fromisoformat(f"{value}-01")
+    except ValueError:
+        return None
+    return min(month, month_start(today))
+
+
 def build_dashboard(
-    user: AbstractBaseUser | AnonymousUser, period: str, today: datetime.date
+    user: AbstractBaseUser | AnonymousUser,
+    period: str,
+    today: datetime.date,
+    month: datetime.date | None = None,
 ) -> Dashboard:
-    if period not in dict(PERIODS):
-        period = DEFAULT_PERIOD
-    start, end = period_bounds(period, today)
+    """`month` (1º dia) escolhe um mês específico, navegável com ◂ ▸; sem ele vale `period`."""
+    current_month = month_start(today)
+    if month is not None:
+        month = min(month_start(month), current_month)
+        if month == current_month:
+            period = "mes"
+        elif month == add_months(current_month, -1):
+            period = "mes-anterior"
+        else:
+            period = MONTH_PERIOD
+        start, end = month, month_end(month)
+    else:
+        if period not in dict(PERIODS):
+            period = DEFAULT_PERIOD
+        start, end = period_bounds(period, today)
+    single_month = start == month_start(start) and end == month_end(start)
     comparison = comparable_ranges(start, end, today)
     effective_end = comparison.current.end if comparison else end
     current = selectors.totals(user, start, effective_end)
@@ -390,7 +420,7 @@ def build_dashboard(
 
     # Ritmo de gastos: só para períodos de um mês.
     pace_chart = None
-    if period in {"mes", "mes-anterior"}:
+    if single_month:
         prev_month = add_months(start, -1)
         days_in_month = (end - start).days + 1
         cur_values = cumulative(
@@ -456,15 +486,14 @@ def build_dashboard(
         if prev_range
         else None,
     )
-    month_comparison = build_month_comparison(
-        user, effective_end, selectors.first_activity_date(user)
-    )
+    first_activity = selectors.first_activity_date(user)
+    month_comparison = build_month_comparison(user, effective_end, first_activity)
 
     insights = (
         build_insights(
             user,
             comparison,
-            single_month=period in {"mes", "mes-anterior"},
+            single_month=single_month,
             today=today,
             current=current,
             previous=previous,
@@ -494,4 +523,8 @@ def build_dashboard(
         has_data=bool(current.income_cents or current.expense_cents),
         insights=insights,
         month_comparison=month_comparison,
+        is_new_user=first_activity is None,
+        month=start if single_month else None,
+        previous_month=add_months(start, -1) if single_month else None,
+        next_month=add_months(start, 1) if single_month and start < current_month else None,
     )

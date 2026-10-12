@@ -1,10 +1,11 @@
+import datetime
 from decimal import Decimal
 from typing import Any
 
 from django import template
 from django.urls import reverse
 
-from apps.analytics.domain.insights import Evidence
+from apps.analytics.domain.insights import Evidence, month_name
 from apps.analytics.domain.metrics import format_pct
 from apps.core.money import format_brl
 from apps.ledger.filters import TransactionFilter
@@ -87,3 +88,9 @@ def spark_points(values: list[int]) -> str:
     return " ".join(
         f"{i * step:.1f},{23 - (v - low) / span * 22:.1f}" for i, v in enumerate(values)
     )
+
+
+@register.filter
+def month_title(day: datetime.date) -> str:
+    """1º/out/2026 → "Outubro de 2026"."""
+    return f"{month_name(day).capitalize()} de {day.year}"

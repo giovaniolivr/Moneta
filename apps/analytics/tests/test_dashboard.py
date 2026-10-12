@@ -8,7 +8,8 @@ import pytest
 from django.utils import timezone
 
 from apps.analytics import selectors
-from apps.analytics.dashboard import build_dashboard, period_bounds
+from apps.analytics.dashboard import build_dashboard, parse_month, period_bounds
+from apps.analytics.domain.periods import DateRange
 from apps.ledger.models import AccountKind
 from apps.ledger.services import (
     TransactionData,
@@ -155,3 +156,32 @@ def test_invalid_period_falls_back(user: Any) -> None:
 
 def test_scoped_to_user(user: Any, other_user: Any, scenario: Any) -> None:
     assert selectors.totals(other_user, None, None).expense_cents == 0
+
+
+def test_specific_month_is_closed_and_navigable(user: Any, scenario: Any) -> None:
+    dash = build_dashboard(user, "", TODAY, D(2026, 8, 1))
+    assert (dash.start, dash.end) == (D(2026, 8, 1), D(2026, 8, 31))
+    assert dash.period == "mes-especifico"  # nenhuma aba de período ativa
+    assert dash.comparison is not None
+    assert not dash.comparison.partial
+    assert dash.comparison.previous == DateRange(D(2026, 7, 1), D(2026, 7, 31))
+    assert (dash.previous_month, dash.next_month) == (D(2026, 7, 1), D(2026, 9, 1))
+    assert dash.pace_chart is not None  # mês único: ritmo de gastos disponível
+
+
+def test_month_navigation_stops_at_current_month(user: Any) -> None:
+    current = build_dashboard(user, "", TODAY, D(2027, 1, 1))  # futuro → mês atual
+    assert current.period == "mes"
+    assert current.month == D(2026, 10, 1)
+    assert current.next_month is None
+    previous = build_dashboard(user, "", TODAY, D(2026, 9, 1))
+    assert previous.period == "mes-anterior"
+    assert previous.next_month == D(2026, 10, 1)
+    assert build_dashboard(user, "3m", TODAY).month is None  # sem navegação em períodos longos
+
+
+def test_parse_month() -> None:
+    assert parse_month("2026-08", TODAY) == D(2026, 8, 1)
+    assert parse_month("2030-01", TODAY) == D(2026, 10, 1)
+    assert parse_month("agosto", TODAY) is None
+    assert parse_month("", TODAY) is None

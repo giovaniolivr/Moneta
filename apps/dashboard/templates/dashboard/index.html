@@ -9,6 +9,9 @@
 {% endblock %}
 
 {% block content %}
+{% if dash.is_new_user %}
+  {% include "dashboard/_welcome.html" %}
+{% else %}
 <div class="page-header">
   <div>
     <h1>Olá, {{ user.get_short_name|default:user.get_username }}</h1>
@@ -17,6 +20,17 @@
       {% if dash.comparison.partial %}· comparado com {{ dash.comparison.previous.start|date:"d/m" }} a {{ dash.comparison.previous.end|date:"d/m" }} (mesmos dias){% elif dash.comparison %}· comparado com {{ dash.comparison.previous.start|date:"d/m" }} a {{ dash.comparison.previous.end|date:"d/m/Y" }}{% endif %}
     </p>
   </div>
+  {% if dash.month %}
+    <nav class="month-nav" aria-label="Navegar entre meses">
+      <a class="btn btn-ghost btn-icon" href="?mes={{ dash.previous_month|date:'Y-m' }}" aria-label="Mês anterior: {{ dash.previous_month|month_title }}">{% icon "chevron-left" %}</a>
+      <span class="month-nav-label" aria-current="date">{{ dash.month|month_title }}</span>
+      {% if dash.next_month %}
+        <a class="btn btn-ghost btn-icon" href="?mes={{ dash.next_month|date:'Y-m' }}" aria-label="Próximo mês: {{ dash.next_month|month_title }}">{% icon "chevron-right" %}</a>
+      {% else %}
+        <span class="btn btn-ghost btn-icon" aria-disabled="true">{% icon "chevron-right" %}</span>
+      {% endif %}
+    </nav>
+  {% endif %}
   <nav class="period-tabs" aria-label="Período">
     {% for value, label in periods %}
       <a class="period-tab" href="?periodo={{ value }}"{% if value == dash.period %} aria-current="true"{% endif %}>{{ label }}</a>
@@ -194,4 +208,5 @@
 {{ dash.monthly_chart|json_script:"data-monthly" }}
 {{ dash.net_chart|json_script:"data-net" }}
 {% if dash.pace_chart %}{{ dash.pace_chart|json_script:"data-pace" }}{% endif %}
+{% endif %}
 {% endblock %}

@@ -46,8 +46,8 @@ class TestHome:
     def test_empty_state(self, client: Client, user: Any) -> None:
         client.force_login(user)
         html = client.get(reverse("home")).content.decode()
-        assert "Nenhuma movimentação ainda" in html
-        assert "Principal" in html
+        assert "Boas-vindas ao Moneta" in html  # sem dados: primeiros passos, não gráficos zerados
+        assert 'data-chart="columns"' not in html
         assert "em breve" not in html  # todas as páginas do menu já existem
         assert f'href="{reverse("portability:index")}"' in html
 
@@ -111,3 +111,14 @@ def test_category_icons_exist_in_sprite() -> None:
     missing = [n for n in names if f'<symbol id="{n}"' not in sprite]
     assert not missing, f"ícones fora do sprite: {missing}"
     assert {d.icon for d in DEFAULT_CATEGORIES} <= {name for name, _ in CATEGORY_ICONS}
+
+
+@pytest.mark.django_db
+def test_custom_404_and_skip_link(client: Client, user: Any) -> None:
+    client.force_login(user)
+    response = client.get("/nao-existe/")
+    assert response.status_code == 404
+    assert "Página não encontrada" in response.content.decode()
+    home = client.get(reverse("home")).content.decode()
+    assert '<a class="skip-link" href="#conteudo">' in home
+    assert 'id="conteudo" tabindex="-1"' in home

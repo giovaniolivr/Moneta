@@ -4,8 +4,18 @@ Plataforma de gestão e planejamento financeiro pessoal. Uso próprio no início
 virar multiusuário e ganhar clientes web/mobile. Idioma do produto e da documentação: pt-BR.
 Código (identificadores) em inglês.
 
-**Status:** arquitetura validada; entrega 0 (esqueleto) concluída. Seguir o roadmap da §10 de
+**Status:** Fase 1 (entregas 0–13) concluída; PWA/mobile adiado para a etapa de uso real. Seguir o roadmap da §10 de
 `docs/ARQUITETURA.md`, uma entrega por vez.
+
+## Pendência: configurar o uso real (fazer junto com o usuário, quando ele pedir)
+O usuário ainda não configurou o app para dados reais. Quando ele quiser começar a usar, guiar
+passo a passo (sem ler nem exibir o conteúdo de `.env`; ele cola os valores):
+1. `.env` a partir de `.env.example`; gerar `DJANGO_SECRET_KEY` nova (comando no arquivo).
+2. `DATABASE_URL=sqlite:///db.sqlite3` → `migrate` → `createsuperuser` (seu usuário/senha).
+3. Decidir `DEV_AUTO_LOGIN` (com dados reais, provavelmente `0`) e `DEV_AUTO_LOGIN_USERNAME`.
+4. Agendar `manage.py backup` no Agendador de Tarefas do Windows (diário) e testar um restore.
+5. Fazer um export JSON inicial e conferir que `db.sqlite3`/`.env`/`backups/` seguem fora do git.
+Mobile/PWA também fica para essa etapa ("usar o app em si").
 
 ## Documentos de referência
 - `docs/ARQUITETURA.md` — stack, camadas, modelagem, roadmap, decisões. Fonte da verdade técnica.
@@ -83,6 +93,10 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
   (`selectors.export_payload`), import (`services._Importer`) e, se o formato mudar, suba
   `SCHEMA_VERSION` com um migrador em `schema.MIGRATIONS`. O teste de round-trip deve continuar
   verde. `manage.py backup` copia o SQLite (API de backup online) com rotação.
+- Exclusão de movimentação é desfazível: `transaction_snapshot()` vai para a sessão e a mensagem
+  ganha o botão "Desfazer" (`done(..., extra_tags="undo")` → `ledger:transaction_restore`).
+- Dashboard: `?mes=AAAA-MM` escolhe um mês (navegação ◂ ▸, nunca futuro); usuário sem nenhuma
+  receita/despesa vê `dashboard/_welcome.html` em vez de gráficos zerados.
 - Dev: login automático no `runserver` (só DEBUG + localhost, `apps/core/dev_autologin.py`).
 
 ## Estrutura

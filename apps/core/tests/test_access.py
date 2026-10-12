@@ -39,7 +39,7 @@ def test_login_then_home(client, django_user_model) -> None:
     )
     assert response.status_code == 200
     assert response.request["PATH_INFO"] == reverse("home")
-    assert "Olá, ana" in response.content.decode()
+    assert "Boas-vindas ao Moneta" in response.content.decode()
 
 
 def test_security_headers(client) -> None:

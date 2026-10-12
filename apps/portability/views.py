@@ -44,10 +44,10 @@ def _render_index(
             "errors": errors or [],
             "max_mb": MAX_FILE_BYTES // (1024 * 1024),
             "counts": [
-                ("Movimentações", Transaction.objects.for_user(user).count()),
-                ("Contas", Account.objects.for_user(user).count()),
-                ("Categorias", Category.objects.for_user(user).count()),
-                ("Tags", Tag.objects.for_user(user).count()),
+                (Transaction.objects.for_user(user).count(), "movimentação", "movimentações"),
+                (Account.objects.for_user(user).count(), "conta", "contas"),
+                (Category.objects.for_user(user).count(), "categoria", "categorias"),
+                (Tag.objects.for_user(user).count(), "tag", "tags"),
             ],
         },
     )

@@ -1,0 +1,36 @@
+{% load ui %}<div class="page-header">
+  <div>
+    <h1>Boas-vindas ao Moneta{% if user.first_name %}, {{ user.first_name }}{% endif %}</h1>
+    <p>Assim que você registrar as primeiras receitas e despesas, esta tela vira o seu painel.</p>
+  </div>
+</div>
+
+<ol class="welcome-steps">
+  <li class="card welcome-step">
+    <span class="welcome-icon">{% icon "landmark" %}</span>
+    <div class="stack">
+      <h2>Confira suas contas</h2>
+      <p class="text-sm muted">Cadastre onde seu dinheiro está (conta corrente, cartão, poupança) e o saldo de partida de cada uma.</p>
+      <div><a class="btn btn-secondary" href="{% url 'ledger:account_list' %}">Ver contas</a></div>
+    </div>
+  </li>
+  <li class="card welcome-step">
+    <span class="welcome-icon">{% icon "plus" %}</span>
+    <div class="stack">
+      <h2>Registre movimentações</h2>
+      <p class="text-sm muted">Uma de cada vez pelo botão “+”, ou várias numa tela só — bom para lançar o mês passado.</p>
+      <div class="page-actions">
+        {% if new_transaction_url %}<a class="btn btn-primary" href="{{ new_transaction_url }}" data-drawer>Nova movimentação</a>{% endif %}
+        <a class="btn btn-secondary" href="{% url 'ledger:transaction_batch' %}">Lançar em lote</a>
+      </div>
+    </div>
+  </li>
+  <li class="card welcome-step">
+    <span class="welcome-icon">{% icon "database" %}</span>
+    <div class="stack">
+      <h2>Já tem um arquivo do Moneta?</h2>
+      <p class="text-sm muted">Importe uma exportação anterior e veja uma prévia antes de gravar.</p>
+      <div><a class="btn btn-secondary" href="{% url 'portability:index' %}">Importar dados</a></div>
+    </div>
+  </li>
+</ol>

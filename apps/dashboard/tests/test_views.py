@@ -99,9 +99,17 @@ def test_previous_month_period(logged: Client) -> None:
     assert "R$\xa0300,00" in html
 
 
-def test_new_user_sees_empty_state(client: Client, other_user: Any) -> None:
+def test_new_user_sees_first_steps(client: Client, other_user: Any) -> None:
     client.force_login(other_user)
     html = client.get(reverse("home")).content.decode()
+    assert "Boas-vindas ao Moneta" in html
+    assert reverse("ledger:transaction_batch") in html
+    assert reverse("portability:index") in html
+    assert "Sem base de comparação" not in html
+
+
+def test_empty_period_for_user_with_data(logged: Client) -> None:
+    html = logged.get(reverse("home") + "?mes=2026-03").content.decode()
     assert "Nenhuma receita ou despesa neste período" in html
     assert "Sem despesas no período." in html
 
@@ -155,3 +163,14 @@ def test_insights_show_three_then_more() -> None:
     assert all(f"Mensagem {n}" in more[0] for n in range(3))
     assert all(f"Mensagem {n}" in more[1] for n in (3, 4))
     assert "Ver mais 2 análises" in html
+
+
+def test_month_navigation(logged: Client) -> None:
+    html = logged.get(reverse("home") + "?mes=2026-08").content.decode()
+    assert "Agosto de 2026" in html
+    assert 'href="?mes=2026-07"' in html
+    assert 'href="?mes=2026-09"' in html
+    assert 'aria-current="true"' not in html  # nenhuma aba de período ativa
+    current = logged.get(reverse("home")).content.decode()
+    assert "Outubro de 2026" in current
+    assert 'aria-disabled="true"' in current  # não navega para o futuro
