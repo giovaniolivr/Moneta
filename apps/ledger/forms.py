@@ -271,3 +271,100 @@ class AccountForm(forms.Form):
         cents: int = self.cleaned_data.get("opening_balance") or 0
         kind = self.instance.kind if self.instance else self.cleaned_data.get("kind")
         return -cents if kind == AccountKind.CREDIT_CARD else cents
+
+
+# Lançamento em lote -------------------------------------------------------------
+
+BATCH_MAX_ROWS = 100
+BATCH_KINDS = [(TransactionKind.EXPENSE, "Despesa"), (TransactionKind.INCOME, "Receita")]
+
+
+class BatchHeaderForm(forms.Form):
+    """Valores padrão do lote; cada linha pode sobrescrever conta e data."""
+
+    account = forms.ModelChoiceField(
+        label="Conta", queryset=Account.objects.none(), empty_label=None
+    )
+    date = forms.DateField(
+        label="Data", widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
+    )
+
+    def __init__(self, *args: Any, user: User, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["account"].queryset = Account.objects.for_user(user).filter(  # type: ignore[attr-defined]
+            is_archived=False
+        )
+        self.fields["date"].initial = timezone.localdate
+        for field in self.fields.values():
+            field.widget.attrs["class"] = "input"
+
+
+class BatchRowForm(forms.Form):
+    """Uma linha do lote (receita ou despesa). Linhas totalmente vazias são ignoradas."""
+
+    kind = forms.ChoiceField(choices=BATCH_KINDS, initial=TransactionKind.EXPENSE)
+    amount = MoneyField(label="Valor", required=False)
+    category = forms.ModelChoiceField(
+        label="Categoria", queryset=Category.objects.none(), required=False
+    )
+    tags = forms.CharField(label="Tags", required=False, max_length=500)
+    description = forms.CharField(label="Descrição", required=False, max_length=140)
+    date = forms.DateField(
+        label="Data",
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+    account = forms.ModelChoiceField(
+        label="Conta",
+        queryset=Account.objects.none(),
+        required=False,
+        empty_label="Conta padrão",
+        widget=forms.Select(attrs={"class": "input"}),
+    )
+
+    def __init__(self, *args: Any, user: User, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["category"].queryset = Category.objects.for_user(user).filter(  # type: ignore[attr-defined]
+            is_archived=False
+        )
+        self.fields["account"].queryset = Account.objects.for_user(user).filter(  # type: ignore[attr-defined]
+            is_archived=False
+        )
+
+    def is_blank(self) -> bool:
+        """Linha sem nada preenchido além do tipo (ex.: a linha extra no fim da lista)."""
+        if not self.is_bound:
+            return True
+        names = ("amount", "category", "tags", "description", "date", "account")
+        return not any((self.data.get(self.add_prefix(n)) or "").strip() for n in names)
+
+    def clean(self) -> dict[str, Any]:
+        data = super().clean() or {}
+        if self.is_blank():
+            return data
+        if data.get("amount") is None and "amount" not in self.errors:
+            self.add_error("amount", "Informe o valor.")
+        if not data.get("category") and "category" not in self.errors:
+            self.add_error("category", "Escolha uma categoria.")
+        return data
+
+    def to_data(self, *, default_account: Account, default_date: datetime.date) -> TransactionData:
+        d = self.cleaned_data
+        return TransactionData(
+            kind=d["kind"],
+            amount_cents=d["amount"],
+            date=d.get("date") or default_date,
+            account=d.get("account") or default_account,
+            category=d["category"],
+            tags=[t for t in d.get("tags", "").split(",") if t.strip()],
+            description=d.get("description", ""),
+        )
+
+
+BatchRowFormSet = forms.formset_factory(
+    BatchRowForm,
+    extra=0,
+    max_num=BATCH_MAX_ROWS,
+    absolute_max=BATCH_MAX_ROWS,
+    validate_max=True,
+)

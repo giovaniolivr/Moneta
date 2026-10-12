@@ -128,6 +128,36 @@ def create_transaction(user: User, data: TransactionData) -> Transaction:
     return _save(Transaction(owner=user), data, previous_ids=set())
 
 
+class BatchError(Exception):
+    """Uma ou mais linhas do lote são inválidas; nada foi gravado."""
+
+    def __init__(self, errors: dict[int, ValidationError]) -> None:
+        super().__init__(f"{len(errors)} linha(s) com erro")
+        self.errors = errors
+
+
+def create_transactions(user: User, items: Sequence[TransactionData]) -> list[Transaction]:
+    """Grava um lote de movimentações: tudo ou nada.
+
+    Todas as linhas são validadas (mesmo depois do primeiro erro) para que o usuário veja
+    todos os problemas de uma vez; havendo qualquer erro, nada é gravado (rollback).
+    """
+    created: list[Transaction] = []
+    errors: dict[int, ValidationError] = {}
+    with transaction.atomic():
+        for index, data in enumerate(items):
+            try:
+                with transaction.atomic():  # savepoint: um erro não invalida a transação externa
+                    created.append(create_transaction(user, data))
+            except ValidationError as error:
+                errors[index] = error
+        if errors:
+            transaction.set_rollback(True)
+    if errors:
+        raise BatchError(errors)
+    return created
+
+
 @transaction.atomic
 def update_transaction(tx: Transaction, data: TransactionData) -> Transaction:
     """Substitui todos os campos (inclusive as tags) pelos de `data`."""

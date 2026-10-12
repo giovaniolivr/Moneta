@@ -43,8 +43,6 @@ NAMES = [
     "circle-alert",
     "circle-check",
     "info",
-    "panel-left-close",
-    "panel-left-open",
     "pencil",
     "trash-2",
     "funnel",

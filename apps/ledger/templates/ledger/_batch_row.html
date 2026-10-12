@@ -1,0 +1,50 @@
+{% load ui %}
+<div class="batch-row{% if row.errors %} has-errors{% endif %}" data-batch-row data-kind="{{ row.kind.value|default:'expense' }}" role="group" aria-label="Lançamento">
+  <div class="batch-cell batch-kind">
+    <label class="sr-only" for="{{ row.kind.id_for_label }}">Tipo</label>
+    <select class="input" name="{{ row.kind.html_name }}" id="{{ row.kind.id_for_label }}" data-batch-kind>
+      {% for value, label in kinds %}
+        <option value="{{ value }}"{% if row.kind.value == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="batch-cell batch-amount">
+    <label class="sr-only" for="{{ row.amount.id_for_label }}">Valor</label>
+    <input class="input" type="text" name="{{ row.amount.html_name }}" id="{{ row.amount.id_for_label }}" value="{{ row.amount.value|default_if_none:'' }}" inputmode="decimal" autocomplete="off" placeholder="0,00" data-batch-amount>
+    {% for error in row.amount.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
+  <div class="batch-cell batch-category">
+    <label class="sr-only" for="{{ row.category.id_for_label }}">Categoria</label>
+    <select class="input" name="{{ row.category.html_name }}" id="{{ row.category.id_for_label }}" data-batch-category>
+      <option value="">Categoria</option>
+      <optgroup label="Despesas">
+        {% for c in expense_categories %}<option value="{{ c.pk }}" data-kind="expense"{% if row.category.value|stringformat:"s" == c.pk|stringformat:"s" %} selected{% endif %}>{{ c.name }}</option>{% endfor %}
+      </optgroup>
+      <optgroup label="Receitas">
+        {% for c in income_categories %}<option value="{{ c.pk }}" data-kind="income"{% if row.category.value|stringformat:"s" == c.pk|stringformat:"s" %} selected{% endif %}>{{ c.name }}</option>{% endfor %}
+      </optgroup>
+    </select>
+    {% for error in row.category.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
+  <div class="batch-cell batch-description">
+    <label class="sr-only" for="{{ row.description.id_for_label }}">Descrição</label>
+    <input class="input" type="text" name="{{ row.description.html_name }}" id="{{ row.description.id_for_label }}" value="{{ row.description.value|default_if_none:'' }}" maxlength="140" placeholder="Descrição">
+  </div>
+  <div class="batch-cell batch-tags">
+    <label class="sr-only" for="{{ row.tags.id_for_label }}">Tags</label>
+    <input class="input" type="text" name="{{ row.tags.html_name }}" id="{{ row.tags.id_for_label }}" value="{{ row.tags.value|default_if_none:'' }}" autocomplete="off" autocapitalize="none" placeholder="Tags (vírgula)" list="batch-tags">
+  </div>
+  <div class="batch-cell batch-date">
+    <label class="sr-only" for="{{ row.date.id_for_label }}">Data (padrão do lote)</label>
+    <input class="input" type="date" name="{{ row.date.html_name }}" id="{{ row.date.id_for_label }}" value="{{ row.date.value|date:'Y-m-d'|default:row.date.value|default_if_none:'' }}" title="Vazio = data do lote">
+    {% for error in row.date.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
+  <div class="batch-cell batch-account">
+    <label class="sr-only" for="{{ row.account.id_for_label }}">Conta (padrão do lote)</label>
+    {{ row.account }}
+  </div>
+  <div class="batch-cell batch-remove">
+    <button class="btn btn-ghost btn-icon" type="button" data-batch-remove aria-label="Remover linha" title="Remover linha">{% icon "x" "icon-sm" %}</button>
+  </div>
+  {% if row.non_field_errors %}<p class="field-error batch-row-error">{{ row.non_field_errors|join:" " }}</p>{% endif %}
+</div>

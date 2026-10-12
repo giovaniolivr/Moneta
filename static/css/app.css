@@ -173,6 +173,11 @@
     color: inherit;
   }
 
+  /* O atributo hidden sempre vence o display de componentes (.alert, .btn...). */
+  [hidden] {
+    display: none !important;
+  }
+
   .sr-only {
     position: absolute;
     width: 1px;
@@ -385,18 +390,9 @@
       gap: var(--space-2);
     }
 
-    .sidebar-toggle .icon-expand,
-    :root[data-sidebar="collapsed"] .sidebar-toggle .icon-collapse {
-      display: none;
-    }
-
-    :root[data-sidebar="collapsed"] .sidebar-toggle .icon-expand {
-      display: block;
-    }
-
-    /* Menu recolhido: coluna de 72px só com ícones. Ao passar o mouse (ou navegar pelo
+    /* Menu compacto: coluna de 72px só com ícones. Ao passar o mouse (ou navegar pelo
        teclado), ele se expande POR CIMA do conteúdo, sem deslocar a página. */
-    :root[data-sidebar="collapsed"] {
+    :root {
       --sidebar-width: 72px;
 
       .main {
@@ -680,8 +676,13 @@
     font-weight: 500;
   }
 
-  .badge-demo {
+  .sidebar .badge-demo {
     align-self: flex-start;
+  }
+
+  .badge-demo {
+    align-self: center;
+    white-space: nowrap;
     border-color: var(--color-warning);
     color: var(--color-warning);
   }
@@ -1170,7 +1171,7 @@
 
   /* Menu recolhido (desktop): fica nesta camada para vencer as regras base de .badge/.btn. */
   @media (min-width: 1024px) {
-    :root[data-sidebar="collapsed"] .sidebar:not(:hover):not(:has(:focus-visible)) {
+    .sidebar:not(:hover):not(:has(:focus-visible)) {
       .badge {
         display: none;
       }
@@ -1350,6 +1351,165 @@
   [data-account-form][data-kind="credit_card"] [data-only-kind="other"],
   [data-account-form]:not([data-kind="credit_card"]) [data-only-kind="credit_card"] {
     display: none;
+  }
+}
+
+/* ───────────────────────────── Lançamento em lote ───────────────────────────── */
+@layer components {
+  .page-actions {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .batch-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin-top: calc(-1 * var(--space-2));
+  }
+
+  .batch-header {
+    display: grid;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+  }
+
+  .batch-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-3);
+    margin: 0;
+  }
+
+  .batch-summary dt {
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .batch-summary dd {
+    margin: var(--space-1) 0 0;
+    color: var(--color-ink);
+    font-size: var(--text-lg);
+    font-weight: 700;
+  }
+
+  .batch-table {
+    padding: var(--space-3);
+  }
+
+  .batch-row.batch-head {
+    display: none;
+  }
+
+  /* Celular: cada linha é um cartão compacto. */
+  .batch-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: var(--space-2);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--color-hairline);
+  }
+
+  .batch-row .input {
+    min-height: 40px;
+    font-size: var(--text-sm);
+  }
+
+  .batch-amount .input {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .batch-row[data-kind="expense"] .batch-amount .input {
+    color: var(--color-expense);
+  }
+
+  .batch-row[data-kind="income"] .batch-amount .input {
+    color: var(--color-income);
+  }
+
+  .batch-kind { grid-column: 1; }
+  .batch-amount { grid-column: 2; }
+  .batch-remove { grid-column: 3; grid-row: 1; }
+  .batch-category,
+  .batch-description,
+  .batch-tags { grid-column: 1 / -1; }
+  .batch-date { grid-column: 1; }
+  .batch-account { grid-column: 2 / -1; }
+
+  .batch-row.has-errors {
+    border-left: 3px solid var(--color-expense);
+    padding-left: var(--space-2);
+  }
+
+  .batch-row .field-error {
+    margin-top: 2px;
+    font-size: var(--text-xs);
+  }
+
+  .batch-row-error {
+    grid-column: 1 / -1;
+  }
+
+  .batch-add {
+    margin-top: var(--space-2);
+  }
+
+  .batch-actions {
+    position: sticky;
+    bottom: calc(68px + env(safe-area-inset-bottom));
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+    padding: var(--space-3) 0;
+    background: linear-gradient(transparent, var(--color-canvas) 30%);
+  }
+
+  kbd {
+    padding: 0 6px;
+    border: 1px solid var(--color-hairline-strong);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: var(--text-xs);
+  }
+
+  @media (min-width: 768px) {
+    .batch-header {
+      grid-template-columns: 220px 180px 1fr;
+      align-items: end;
+    }
+  }
+
+  /* Desktop: tabela de uma linha por lançamento. */
+  @media (min-width: 1100px) {
+    .batch-row.batch-head {
+      display: grid;
+      color: var(--color-muted);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .batch-row {
+      grid-template-columns: 112px 120px 170px minmax(140px, 1fr) minmax(120px, 1fr) 140px 150px 36px;
+      align-items: start;
+      padding: var(--space-1) 0;
+      border-bottom: 0;
+    }
+
+    .batch-row > * {
+      grid-column: auto;
+      grid-row: auto;
+    }
+
+    .batch-actions {
+      bottom: 0;
+    }
   }
 }
 

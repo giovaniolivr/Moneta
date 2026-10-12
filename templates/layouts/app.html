@@ -12,9 +12,6 @@
   <aside class="sidebar" aria-label="Menu principal">
     <div class="sidebar-top">
       <a class="brand" href="{% url 'home' %}" title="Moneta"><span class="brand-mark">M</span><span class="nav-label">Moneta</span></a>
-      <button class="btn btn-ghost btn-icon sidebar-toggle" type="button" data-sidebar-toggle aria-expanded="true" aria-label="Recolher ou expandir o menu" title="Recolher/expandir menu">
-        {% icon "panel-left-close" "icon-collapse" %}{% icon "panel-left-open" "icon-expand" %}
-      </button>
     </div>
 
     {% if new_transaction_url %}

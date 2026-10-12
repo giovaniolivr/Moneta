@@ -3,6 +3,9 @@
   {% csrf_token %}
   {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
   {% include "components/drawer_header.html" %}
+  {% if not transaction %}
+    <a class="text-sm batch-link" href="{% url 'ledger:transaction_batch' %}">{% icon "arrow-up-right" "icon-sm" %}Vai lançar várias? Use o lançamento em lote</a>
+  {% endif %}
 
   {% if saved_message %}
     <div class="alert alert-success" role="status">{% icon "circle-check" "icon-sm" %}{{ saved_message }}</div>

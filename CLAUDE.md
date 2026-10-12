@@ -52,6 +52,10 @@ CSS próprio sem build (ADR 0002) · Apache ECharts · pytest · ruff · mypy.
 - Formulários com `instance=` usam `has_data(args, kwargs)` para decidir se aplicam os valores
   iniciais (`Form(request.POST or None)` passa `None` posicional).
 - Regras de exclusão: conta/categoria com movimentações só arquiva; sempre ≥ 1 conta ativa.
+- Lote: `create_transactions()` é tudo-ou-nada e reporta erros de todas as linhas (`BatchError`);
+  formset com prefixo `linhas` (máx. 100) + cabeçalho `lote`; JS em `static/js/batch.js`.
+- Menu lateral (desktop) é sempre compacto e expande por hover/foco — não há botão de recolher.
+- `[hidden]` tem `display: none !important` no CSS base: use o atributo para esconder elementos.
 - Views tipam `request: AuthenticatedHttpRequest` (`apps/core/http.py`); objetos por id sempre via
   `get_object_or_404(<selector escopado>(request.user), pk=pk)` → 404 para dados de outro usuário.
 - Cuidado com `@layer`: regras em `layout` perdem para `components` independentemente da

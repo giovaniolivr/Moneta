@@ -1,11 +1,13 @@
 import uuid
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlencode
 
+from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.http import HttpResponse, QueryDict
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
@@ -15,9 +17,18 @@ from apps.core.forms import apply_service_errors
 from apps.core.http import AuthenticatedHttpRequest
 from apps.core.money import format_brl
 from apps.taxonomy.models import Category, CategoryKind
+from apps.taxonomy.selectors import list_categories
 
-from .forms import AccountForm, TransactionFilterForm, TransactionForm
-from .models import Account, PaymentMethod, TransactionKind
+from .forms import (
+    BATCH_KINDS,
+    BATCH_MAX_ROWS,
+    AccountForm,
+    BatchHeaderForm,
+    BatchRowFormSet,
+    TransactionFilterForm,
+    TransactionForm,
+)
+from .models import Account, PaymentMethod, Transaction, TransactionKind
 from .selectors import (
     accounts_with_balances,
     categories_by_usage,
@@ -29,8 +40,10 @@ from .selectors import (
     transaction_totals,
 )
 from .services import (
+    BatchError,
     create_account,
     create_transaction,
+    create_transactions,
     delete_account,
     delete_transaction,
     set_account_archived,
@@ -302,3 +315,77 @@ def account_delete(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpResp
     except ValidationError as error:
         return _account_action_failed(request, account, error)
     return done(request, f"Conta “{name}” excluída.", fallback=ACCOUNTS)
+
+
+# Lançamento em lote ------------------------------------------------------------
+
+BATCH_INITIAL_ROWS = 3
+
+
+@require_http_methods(["GET", "POST"])
+def transaction_batch(request: AuthenticatedHttpRequest) -> HttpResponse:
+    user = request.user
+    data = request.POST if request.method == "POST" else None
+    header = BatchHeaderForm(
+        data, user=user, prefix="lote", initial={"account": last_used_account(user)}
+    )
+    formset = BatchRowFormSet(
+        data,
+        prefix="linhas",
+        form_kwargs={"user": user},
+        initial=None if data else [{"kind": TransactionKind.EXPENSE}] * BATCH_INITIAL_ROWS,
+    )
+    batch_error = ""
+    if data is not None:
+        valid = header.is_valid() & formset.is_valid()  # sem curto-circuito: valida tudo
+        filled = [form for form in formset.forms if not form.is_blank()]
+        if not filled:
+            batch_error = "Preencha ao menos uma linha."
+        elif valid:
+            items = [
+                form.to_data(
+                    default_account=header.cleaned_data["account"],
+                    default_date=header.cleaned_data["date"],
+                )
+                for form in filled
+            ]
+            try:
+                created = create_transactions(user, items)
+            except BatchError as error:
+                for index, row_error in error.errors.items():
+                    apply_service_errors(filled[index], row_error, {"amount_cents": "amount"})
+            else:
+                return _batch_saved(request, created)
+        if not batch_error and (formset.total_error_count() or header.errors):
+            batch_error = "Corrija as linhas destacadas. Nada foi salvo ainda."
+
+    categories = list(list_categories(user))
+    return render(
+        request,
+        "ledger/transaction_batch.html",
+        {
+            "header": header,
+            "formset": formset,
+            "batch_error": batch_error,
+            "is_fresh": data is None,
+            "expense_categories": [c for c in categories if c.kind == CategoryKind.EXPENSE],
+            "income_categories": [c for c in categories if c.kind == CategoryKind.INCOME],
+            "kinds": BATCH_KINDS,
+            "max_rows": BATCH_MAX_ROWS,
+            "frequent_tags": frequent_tags(user, limit=30),
+        },
+    )
+
+
+def _batch_saved(request: AuthenticatedHttpRequest, created: list[Transaction]) -> HttpResponse:
+    expense = sum(t.amount_cents for t in created if t.kind == TransactionKind.EXPENSE)
+    income = sum(t.amount_cents for t in created if t.kind == TransactionKind.INCOME)
+    parts = [f"{len(created)} movimentaç{'ão' if len(created) == 1 else 'ões'} registrada(s)"]
+    if expense:
+        parts.append(f"despesas {format_brl(expense)}")
+    if income:
+        parts.append(f"receitas {format_brl(income)}")
+    messages.success(request, " · ".join(parts) + ".")
+    dates = [t.date for t in created]
+    query = urlencode({"de": min(dates).isoformat(), "ate": max(dates).isoformat()})
+    return redirect(f"{reverse('ledger:transaction_list')}?{query}")

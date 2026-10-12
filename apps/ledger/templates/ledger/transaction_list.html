@@ -15,9 +15,12 @@
       · {{ totals.count }} movimentaç{{ totals.count|pluralize:"ão,ões" }}
     </p>
   </div>
-  {% if new_transaction_url %}
-    <a class="btn btn-primary" href="{{ new_transaction_url }}" data-drawer>{% icon "plus" "icon-sm" %}Nova</a>
-  {% endif %}
+  <div class="page-actions">
+    <a class="btn btn-secondary" href="{% url 'ledger:transaction_batch' %}">Lançar em lote</a>
+    {% if new_transaction_url %}
+      <a class="btn btn-primary" href="{{ new_transaction_url }}" data-drawer>{% icon "plus" "icon-sm" %}Nova</a>
+    {% endif %}
+  </div>
 </div>
 
 <form class="filters card" method="get" action="" role="search" data-clean-query>

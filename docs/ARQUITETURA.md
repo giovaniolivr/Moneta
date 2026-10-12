@@ -409,6 +409,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 4 ✅ | Transaction + services (CRUD, validações, transferências) | regras da §4 testadas; merge de tags move as associações das movimentações |
 | 5 ✅ | Layout base + tokens (temas escuro/claro) + componentes | tela navegável no celular; contraste AA testado |
 | 6 ✅ | Formulário rápido de nova movimentação (painel lateral / inferior) | registro em < 10 s no celular |
+| 6b ✅ | Lançamento em lote (`/movimentacoes/lote/`) | várias linhas, Enter cria a próxima, totais ao vivo, rascunho local, grava tudo-ou-nada |
 | 7 ✅ | Lista de movimentações + `TransactionFilter` | filtros combináveis, edição, exclusão |
 | 7b ✅ | Telas de categorias, tags (apelidos, mesclar) e contas | gestão completa sem usar o admin |
 | 8 | `analytics` selectors + metrics | KPIs batem com cálculo manual em fixtures |

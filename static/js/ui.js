@@ -1,4 +1,4 @@
-// Preferências de interface guardadas no navegador: tema e menu lateral recolhido.
+// Preferências de interface guardadas no navegador (tema) e pequenos comportamentos globais.
 // O estado inicial é aplicado antes da pintura por um script inline no <head> (base.html).
 (() => {
   const root = document.documentElement;
@@ -10,10 +10,6 @@
       // Armazenamento indisponível (modo privado): vale só para esta página.
     }
   }
-
-  document.querySelectorAll("[data-sidebar-toggle]").forEach((button) => {
-    button.setAttribute("aria-expanded", String(root.dataset.sidebar !== "collapsed"));
-  });
 
   // Formulários de filtro (GET): não envia campos vazios, para a URL ficar limpa.
   document.addEventListener("submit", (event) => {
@@ -36,13 +32,6 @@
       const next = root.dataset.theme === "light" ? "dark" : "light";
       root.dataset.theme = next;
       save("moneta-theme", next);
-    }
-    const sidebarToggle = event.target.closest("[data-sidebar-toggle]");
-    if (sidebarToggle) {
-      const next = root.dataset.sidebar === "collapsed" ? "expanded" : "collapsed";
-      root.dataset.sidebar = next;
-      sidebarToggle.setAttribute("aria-expanded", String(next === "expanded"));
-      save("moneta-sidebar", next);
     }
   });
 })();

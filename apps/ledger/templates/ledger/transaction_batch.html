@@ -1,0 +1,78 @@
+{% extends "layouts/app.html" %}
+{% load static ui %}
+
+{% block title %}Lançar em lote{% endblock %}
+
+{% block head %}
+{{ block.super }}
+<script src="{% static 'js/batch.js' %}" defer></script>
+{% endblock %}
+
+{% block content %}
+<form class="batch" method="post" action="{% url 'ledger:transaction_batch' %}" data-batch{% if is_fresh %} data-batch-fresh{% endif %} data-max-rows="{{ max_rows }}" novalidate>
+  {% csrf_token %}
+  {{ formset.management_form }}
+
+  <div class="page-header">
+    <div>
+      <h1>Lançar em lote</h1>
+      <p>Digite várias movimentações e salve tudo de uma vez. <kbd>Enter</kbd> cria a próxima linha.</p>
+    </div>
+    <a class="btn btn-secondary" href="{% url 'ledger:transaction_create' %}" data-drawer>{% icon "plus" "icon-sm" %}Só uma</a>
+  </div>
+
+  {% if batch_error %}
+    <div class="alert alert-error mb-4" role="alert">{% icon "circle-alert" "icon-sm" %}{{ batch_error }}</div>
+  {% endif %}
+  {% for error in formset.non_form_errors %}
+    <div class="alert alert-error mb-4" role="alert">{{ error }}</div>
+  {% endfor %}
+  <div class="alert mb-4" data-batch-draft-notice hidden>
+    {% icon "info" "icon-sm" %}<span>Rascunho anterior restaurado.</span>
+    <button class="btn btn-ghost" type="button" data-batch-discard>Descartar rascunho</button>
+  </div>
+
+  <section class="card batch-header" aria-label="Padrões do lote">
+    <div class="field">
+      <label for="{{ header.account.id_for_label }}">Conta padrão</label>
+      {{ header.account }}
+      {% for error in header.account.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+    </div>
+    <div class="field">
+      <label for="{{ header.date.id_for_label }}">Data padrão</label>
+      {{ header.date }}
+      {% for error in header.date.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+    </div>
+    <dl class="batch-summary" aria-live="polite">
+      <div><dt>Lançamentos</dt><dd data-batch-count>0</dd></div>
+      <div><dt>Despesas</dt><dd class="amount amount-expense" data-batch-expense>R$ 0,00</dd></div>
+      <div><dt>Receitas</dt><dd class="amount amount-income" data-batch-income>R$ 0,00</dd></div>
+    </dl>
+  </section>
+
+  <section class="card batch-table" aria-label="Lançamentos">
+    <div class="batch-row batch-head" aria-hidden="true">
+      <span>Tipo</span><span>Valor</span><span>Categoria</span><span>Descrição</span><span>Tags</span><span>Data</span><span>Conta</span><span></span>
+    </div>
+    <div data-batch-rows>
+      {% for row in formset %}
+        {% include "ledger/_batch_row.html" %}
+      {% endfor %}
+    </div>
+    <button class="btn btn-ghost batch-add" type="button" data-batch-add>{% icon "plus" "icon-sm" %}Adicionar linha</button>
+  </section>
+
+  <div class="batch-actions">
+    <a class="btn btn-ghost" href="{% url 'ledger:transaction_list' %}">Cancelar</a>
+    <button class="btn btn-primary" type="submit" data-batch-submit>Salvar tudo</button>
+  </div>
+
+  <datalist id="batch-tags">
+    {% for tag in frequent_tags %}<option value="{{ tag.name }}"></option>{% endfor %}
+  </datalist>
+</form>
+
+<template id="batch-row-template">
+  {% with row=formset.empty_form %}{% include "ledger/_batch_row.html" %}{% endwith %}
+</template>
+{% endblock %}
