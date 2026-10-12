@@ -37,7 +37,7 @@ pytest · ruff · mypy (strict)
 - [x] 4. Movimentações (receitas, despesas, transferências) com regras garantidas no banco e saldo por conta
 - [x] 5. Layout base e temas escuro/claro (CSS próprio sem build, contraste WCAG AA testado)
 - [x] 6. Registro rápido de movimentação em painel lateral (celular: painel inferior)
-- [ ] 7. Lista e filtros de movimentações
+- [x] 7. Lista com filtros combináveis (período, tipo, categoria, tag, conta, pagamento, busca), edição e exclusão
 - [ ] 7b. Telas de categorias, tags e contas
 - [ ] 8. Motor de indicadores
 - [ ] 9. Dashboard com gráficos e drill-down

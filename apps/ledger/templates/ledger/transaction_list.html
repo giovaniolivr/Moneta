@@ -1,0 +1,145 @@
+{% extends "layouts/app.html" %}
+{% load ui money %}
+
+{% block title %}Movimentações{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Movimentações</h1>
+    <p>
+      {% if filter.date_from and filter.date_to %}{{ filter.date_from|date:"d/m/Y" }} a {{ filter.date_to|date:"d/m/Y" }}
+      {% elif filter.date_from %}A partir de {{ filter.date_from|date:"d/m/Y" }}
+      {% elif filter.date_to %}Até {{ filter.date_to|date:"d/m/Y" }}
+      {% else %}Todo o período{% endif %}
+      · {{ totals.count }} movimentaç{{ totals.count|pluralize:"ão,ões" }}
+    </p>
+  </div>
+  {% if new_transaction_url %}
+    <a class="btn btn-primary" href="{{ new_transaction_url }}" data-drawer>{% icon "plus" "icon-sm" %}Nova</a>
+  {% endif %}
+</div>
+
+<form class="filters card" method="get" action="" role="search" data-clean-query>
+  <div class="filters-bar">
+    <div class="field filters-search">
+      <label class="sr-only" for="{{ filter_form.q.id_for_label }}">Buscar</label>
+      {{ filter_form.q }}
+    </div>
+    <div class="field">
+      <label class="sr-only" for="{{ filter_form.periodo.id_for_label }}">Período</label>
+      <select class="input" name="periodo" id="{{ filter_form.periodo.id_for_label }}">
+        {% for value, label in filter_form.fields.periodo.choices %}
+          <option value="{{ value }}"{% if value == period %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="custom-dates">
+      <div class="field">
+        <label for="{{ filter_form.de.id_for_label }}">De</label>
+        <input class="input" type="date" name="de" id="{{ filter_form.de.id_for_label }}" value="{% if period == 'personalizado' and filter.date_from %}{{ filter.date_from|date:'Y-m-d' }}{% endif %}">
+      </div>
+      <div class="field">
+        <label for="{{ filter_form.ate.id_for_label }}">Até</label>
+        <input class="input" type="date" name="ate" id="{{ filter_form.ate.id_for_label }}" value="{% if period == 'personalizado' and filter.date_to %}{{ filter.date_to|date:'Y-m-d' }}{% endif %}">
+      </div>
+    </div>
+    <button class="btn btn-secondary" type="submit">{% icon "search" "icon-sm" %}Filtrar</button>
+  </div>
+
+  <details class="more filters-more"{% if has_extra_filters %} open{% endif %}>
+    <summary>{% icon "funnel" "icon-sm" %}Mais filtros</summary>
+    <div class="filters-grid">
+      <fieldset>
+        <legend>Tipo</legend>
+        <div class="chips">
+          {% for option in filter_form.tipo %}<label class="chip">{{ option.tag }}<span>{{ option.choice_label }}</span></label>{% endfor %}
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Categorias</legend>
+        <div class="chips">
+          {% for option in filter_form.categoria %}<label class="chip">{{ option.tag }}<span>{{ option.choice_label }}</span></label>{% endfor %}
+        </div>
+      </fieldset>
+      {% if filter_form.fields.tag.queryset.exists %}
+        <fieldset>
+          <legend>Tags</legend>
+          <div class="chips">
+            {% for option in filter_form.tag %}<label class="chip">{{ option.tag }}<span>#{{ option.choice_label }}</span></label>{% endfor %}
+          </div>
+        </fieldset>
+      {% endif %}
+      <fieldset>
+        <legend>Contas</legend>
+        <div class="chips">
+          {% for option in filter_form.conta %}<label class="chip">{{ option.tag }}<span>{{ option.choice_label }}</span></label>{% endfor %}
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Forma de pagamento</legend>
+        <div class="chips">
+          {% for option in filter_form.pagamento %}<label class="chip">{{ option.tag }}<span>{{ option.choice_label }}</span></label>{% endfor %}
+        </div>
+      </fieldset>
+    </div>
+  </details>
+
+  {% if active_filters %}
+    <div class="chips chips-compact active-filters" aria-label="Filtros ativos">
+      {% for chip in active_filters %}
+        <a class="chip" href="{{ chip.remove_url }}" aria-label="Remover filtro {{ chip.label }}">{{ chip.label }}{% icon "x" "icon-sm" %}</a>
+      {% endfor %}
+      <a class="text-sm" href="?periodo={{ period }}">Limpar filtros</a>
+    </div>
+  {% endif %}
+</form>
+
+<div class="grid totals">
+  <div class="card">
+    <div class="stat-label">Receitas</div>
+    <div class="stat-value amount amount-income">{{ totals.income_cents|brl_signed }}</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Despesas</div>
+    <div class="stat-value amount amount-expense">{% if totals.expense_cents %}-{% endif %}{{ totals.expense_cents|brl }}</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Resultado</div>
+    <div class="stat-value amount {% if totals.net_cents < 0 %}amount-expense{% else %}amount-neutral{% endif %}">{{ totals.net_cents|brl_signed }}</div>
+    <div class="stat-hint">Transferências não entram</div>
+  </div>
+</div>
+
+<section class="card" aria-label="Lista de movimentações">
+  {% if page.object_list %}
+    {% regroup page.object_list by date as days %}
+    {% for day in days %}
+      <h2 class="day-header">{{ day.grouper|date:"l, d \d\e F" }}</h2>
+      <ul class="list">
+        {% for tx in day.list %}
+          {% include "components/transaction_row.html" %}
+        {% endfor %}
+      </ul>
+    {% endfor %}
+
+    {% if page.has_other_pages %}
+      <nav class="pagination" aria-label="Paginação">
+        {% if page.has_previous %}
+          <a class="btn btn-secondary" href="?{{ page_query }}{% if page_query %}&{% endif %}pagina={{ page.previous_page_number }}">{% icon "chevron-left" "icon-sm" %}Anteriores</a>
+        {% endif %}
+        <span class="muted text-sm">Página {{ page.number }} de {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}
+          <a class="btn btn-secondary" href="?{{ page_query }}{% if page_query %}&{% endif %}pagina={{ page.next_page_number }}">Próximas{% icon "chevron-right" "icon-sm" %}</a>
+        {% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="empty-state">
+      {% icon "inbox" %}
+      <p class="empty-state-title">Nenhuma movimentação encontrada</p>
+      <p class="text-sm">Ajuste o período ou os filtros{% if new_transaction_url %}, ou <a href="{{ new_transaction_url }}" data-drawer>registre uma nova</a>{% endif %}.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -48,7 +48,11 @@ CSS próprio sem build (ADR 0002) · Apache ECharts · pytest · ruff · mypy.
 - Formulários rápidos: links com `data-drawer` abrem a URL no painel (`static/js/drawer.js`).
   A view devolve só o fragmento quando há o header `X-Moneta-Fragment: 1`, e `204` +
   `X-Moneta-Event` ao salvar; sem JS, a mesma URL renderiza a página inteira.
-- Views tipam `request: AuthenticatedHttpRequest` (`apps/core/http.py`).
+- Views tipam `request: AuthenticatedHttpRequest` (`apps/core/http.py`); objetos por id sempre via
+  `get_object_or_404(<selector escopado>(request.user), pk=pk)` → 404 para dados de outro usuário.
+- Cuidado com `@layer`: regras em `layout` perdem para `components` independentemente da
+  especificidade; sobrescritas de componentes vão na camada `components`.
+- Menu lateral recolhível (`data-sidebar="collapsed"` no `<html>`, salvo no localStorage).
 - Dev: login automático no `runserver` (só DEBUG + localhost, `apps/core/dev_autologin.py`).
 
 ## Estrutura

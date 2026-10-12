@@ -312,8 +312,12 @@ analytics.domain.insights  ── regras → list[Insight]
 dashboard views (HTML) / API futura / LLM futura
 ```
 
-O **mesmo `TransactionFilter`** alimenta a lista de movimentações e a dashboard: clicar numa fatia
-do gráfico abre a lista com exatamente aqueles filtros (drill-down consistente por construção).
+O **mesmo `TransactionFilter`** (`ledger/filters.py`) alimenta a lista de movimentações e a
+dashboard: clicar numa fatia do gráfico abre a lista com exatamente aqueles filtros (drill-down
+consistente por construção; `TransactionFilter.to_query()` gera o link). Semântica: valores da
+mesma dimensão combinam com OU, dimensões diferentes com E; conta casa com origem ou destino;
+filtro por tag usa subquery (sem linhas duplicadas nas somas). Parâmetros de URL em português
+(`periodo`, `de`, `ate`, `tipo`, `categoria`, `tag`, `conta`, `pagamento`, `q`, `pagina`).
 
 ### 6.2 Indicadores do MVP
 Receitas, despesas, resultado, saldo (se houver saldo de abertura), média diária de gastos
@@ -404,7 +408,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 4 ✅ | Transaction + services (CRUD, validações, transferências) | regras da §4 testadas; merge de tags move as associações das movimentações |
 | 5 ✅ | Layout base + tokens (temas escuro/claro) + componentes | tela navegável no celular; contraste AA testado |
 | 6 ✅ | Formulário rápido de nova movimentação (painel lateral / inferior) | registro em < 10 s no celular |
-| 7 | Lista de movimentações + `TransactionFilter` | filtros combináveis, edição, exclusão |
+| 7 ✅ | Lista de movimentações + `TransactionFilter` | filtros combináveis, edição, exclusão |
 | 7b | Telas de categorias, tags (apelidos, mesclar) e contas | gestão completa sem usar o admin |
 | 8 | `analytics` selectors + metrics | KPIs batem com cálculo manual em fixtures |
 | 9 | Dashboard: KPIs + 3 gráficos principais + drill-down | clique leva à lista filtrada |

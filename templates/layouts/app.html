@@ -10,25 +10,30 @@
 <a class="sr-only" href="#conteudo">Pular para o conteúdo</a>
 <div class="app">
   <aside class="sidebar" aria-label="Menu principal">
-    <a class="brand" href="{% url 'home' %}"><span class="brand-mark">M</span>Moneta</a>
+    <div class="sidebar-top">
+      <a class="brand" href="{% url 'home' %}" title="Moneta"><span class="brand-mark">M</span><span class="nav-label">Moneta</span></a>
+      <button class="btn btn-ghost btn-icon sidebar-toggle" type="button" data-sidebar-toggle aria-expanded="true" aria-label="Recolher ou expandir o menu" title="Recolher/expandir menu">
+        {% icon "panel-left-close" "icon-collapse" %}{% icon "panel-left-open" "icon-expand" %}
+      </button>
+    </div>
 
     {% if new_transaction_url %}
-      <a class="btn btn-primary btn-block" href="{{ new_transaction_url }}" data-drawer>{% icon "plus" "icon-sm" %}Nova movimentação</a>
+      <a class="btn btn-primary btn-block sidebar-cta" href="{{ new_transaction_url }}" data-drawer title="Nova movimentação" aria-label="Nova movimentação">{% icon "plus" "icon-sm" %}<span class="nav-label">Nova movimentação</span></a>
     {% endif %}
 
     <nav class="sidebar-nav">
       {% for item in nav_items %}
         {% if item.url %}
-          <a href="{{ item.url }}"{% if item.active %} aria-current="page"{% endif %}>{% icon item.icon %}{{ item.label }}</a>
+          <a href="{{ item.url }}" title="{{ item.label }}"{% if item.active %} aria-current="page"{% endif %}>{% icon item.icon %}<span class="nav-label">{{ item.label }}</span></a>
         {% else %}
-          <a aria-disabled="true" title="Em breve">{% icon item.icon %}{{ item.label }}<span class="badge ml-auto">em breve</span></a>
+          <a aria-disabled="true" title="{{ item.label }} (em breve)">{% icon item.icon %}<span class="nav-label">{{ item.label }}</span><span class="badge ml-auto">em breve</span></a>
         {% endif %}
       {% endfor %}
     </nav>
 
     <div class="sidebar-footer">
-      <span title="{{ user.get_username }}">{{ user.get_short_name|default:user.get_username }}</span>
-      <span>
+      <span class="nav-label" title="{{ user.get_username }}">{{ user.get_short_name|default:user.get_username }}</span>
+      <span class="sidebar-actions">
         <button class="btn btn-ghost btn-icon theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema claro/escuro">
           {% icon "sun" "icon-sun" %}{% icon "moon" "icon-moon" %}
         </button>

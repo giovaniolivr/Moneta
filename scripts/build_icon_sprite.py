@@ -43,6 +43,14 @@ NAMES = [
     "circle-alert",
     "circle-check",
     "info",
+    "panel-left-close",
+    "panel-left-open",
+    "pencil",
+    "trash-2",
+    "funnel",
+    "search",
+    "calendar",
+    "chevron-left",
 ]
 
 URL = "https://cdn.jsdelivr.net/npm/lucide-static@{version}/icons/{name}.svg"

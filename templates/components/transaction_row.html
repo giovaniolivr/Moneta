@@ -1,17 +1,19 @@
 {% load ui ledger_ui %}
-<li class="list-item">
-  {% if tx.category %}
-    <span class="avatar-icon slot-{{ tx.category.color }}">{% icon tx.category.icon|default:"wallet" %}</span>
-  {% else %}
-    <span class="avatar-icon">{% icon "arrow-left-right" %}</span>
-  {% endif %}
-  <div class="list-item-main">
-    <div class="list-item-title">
-      {% if tx.description %}{{ tx.description }}{% elif tx.category %}{{ tx.category.name }}{% else %}Transferência{% endif %}
-    </div>
-    <div class="list-item-meta">
-      {{ tx.date|date:"d/m" }} · {{ tx.account.name }}{% if tx.destination_account %} → {{ tx.destination_account.name }}{% endif %}{% for tag in tx.tags.all %} · #{{ tag.name }}{% endfor %}
-    </div>
-  </div>
-  <span class="amount {{ tx|tx_amount_class }}">{{ tx|tx_amount }}</span>
+<li>
+  <a class="list-item list-item-link" href="{% url 'ledger:transaction_update' tx.pk %}?next={{ request.get_full_path|urlencode }}" data-drawer>
+    {% if tx.category %}
+      <span class="avatar-icon slot-{{ tx.category.color }}">{% icon tx.category.icon|default:"wallet" %}</span>
+    {% else %}
+      <span class="avatar-icon">{% icon "arrow-left-right" %}</span>
+    {% endif %}
+    <span class="list-item-main">
+      <span class="list-item-title">
+        {% if tx.description %}{{ tx.description }}{% elif tx.category %}{{ tx.category.name }}{% else %}Transferência{% endif %}
+      </span>
+      <span class="list-item-meta">
+        {% if show_date %}{{ tx.date|date:"d/m" }} · {% endif %}{% if tx.category and tx.description %}{{ tx.category.name }} · {% endif %}{{ tx.account.name }}{% if tx.destination_account %} → {{ tx.destination_account.name }}{% endif %}{% for tag in tx.tags.all %} · #{{ tag.name }}{% endfor %}
+      </span>
+    </span>
+    <span class="amount {{ tx|tx_amount_class }}">{{ tx|tx_amount }}</span>
+  </a>
 </li>

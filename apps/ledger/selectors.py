@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from apps.taxonomy.models import Category, Tag
 
+from .filters import TransactionFilter
 from .models import Account, Transaction, TransactionKind
 
 
@@ -125,3 +126,54 @@ def last_used_account(user: AbstractBaseUser | AnonymousUser) -> Account | None:
         .first()
     )
     return tx.account if tx else list_accounts(user).first()
+
+
+# Lista filtrada -------------------------------------------------------------------
+
+
+def filter_transactions(
+    user: AbstractBaseUser | AnonymousUser, f: TransactionFilter
+) -> QuerySet[Transaction]:
+    qs = list_transactions(user)
+    if f.date_from:
+        qs = qs.filter(date__gte=f.date_from)
+    if f.date_to:
+        qs = qs.filter(date__lte=f.date_to)
+    if f.kinds:
+        qs = qs.filter(kind__in=f.kinds)
+    if f.category_ids:
+        qs = qs.filter(category_id__in=f.category_ids)
+    if f.tag_ids:
+        # Subquery em vez de JOIN: evita linhas duplicadas e mantém as somas corretas.
+        tagged = Transaction.objects.filter(tags__in=f.tag_ids).values("pk")
+        qs = qs.filter(pk__in=tagged)
+    if f.account_ids:
+        qs = qs.filter(
+            Q(account_id__in=f.account_ids) | Q(destination_account_id__in=f.account_ids)
+        )
+    if f.payment_methods:
+        qs = qs.filter(payment_method__in=f.payment_methods)
+    if f.search:
+        qs = qs.filter(Q(description__icontains=f.search) | Q(notes__icontains=f.search))
+    return qs
+
+
+@dataclass(frozen=True)
+class Totals:
+    income_cents: int
+    expense_cents: int
+    count: int
+
+    @property
+    def net_cents(self) -> int:
+        """Resultado: receitas - despesas. Transferências não entram."""
+        return self.income_cents - self.expense_cents
+
+
+def transaction_totals(qs: QuerySet[Transaction]) -> Totals:
+    result = qs.order_by().aggregate(
+        income=Sum("amount_cents", filter=Q(kind=TransactionKind.INCOME)),
+        expense=Sum("amount_cents", filter=Q(kind=TransactionKind.EXPENSE)),
+        count=Count("pk"),
+    )
+    return Totals(result["income"] or 0, result["expense"] or 0, result["count"])

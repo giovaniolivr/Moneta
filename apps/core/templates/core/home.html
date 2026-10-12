@@ -38,11 +38,14 @@
     </section>
 
     <section class="card" aria-labelledby="recentes">
-      <div class="card-header"><h2 id="recentes">Últimas movimentações</h2></div>
+      <div class="card-header">
+        <h2 id="recentes">Últimas movimentações</h2>
+        <a class="text-sm" href="{% url 'ledger:transaction_list' %}">Ver todas</a>
+      </div>
       {% if recent_transactions %}
         <ul class="list">
           {% for tx in recent_transactions %}
-            {% include "components/transaction_row.html" %}
+            {% include "components/transaction_row.html" with show_date=True %}
           {% endfor %}
         </ul>
       {% else %}

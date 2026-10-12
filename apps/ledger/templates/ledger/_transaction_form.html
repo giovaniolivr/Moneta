@@ -1,8 +1,9 @@
 {% load ui %}
-<form class="tx-form" method="post" action="{% url 'ledger:transaction_create' %}" data-transaction-form data-kind="{{ kind }}" novalidate>
+<form class="tx-form" method="post" action="{{ form_action }}" data-transaction-form data-kind="{{ kind }}" novalidate>
   {% csrf_token %}
+  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
   <div class="drawer-header">
-    <h2 id="drawer-title">Nova movimentação</h2>
+    <h2 id="drawer-title">{{ form_title }}</h2>
     <button class="btn btn-ghost btn-icon" type="button" data-drawer-close aria-label="Fechar">{% icon "x" %}</button>
   </div>
 
@@ -95,8 +96,22 @@
     </div>
   </details>
 
-  <div class="form-actions">
-    <button class="btn btn-secondary" type="submit" name="save_and_new" value="1">Salvar e adicionar outra</button>
-    <button class="btn btn-primary" type="submit">Salvar</button>
+  <div class="form-actions{% if transaction %} form-actions-single{% endif %}">
+    {% if not transaction %}
+      <button class="btn btn-secondary" type="submit" name="save_and_new" value="1">Salvar e adicionar outra</button>
+    {% endif %}
+    <button class="btn btn-primary" type="submit">{% if transaction %}Salvar alterações{% else %}Salvar{% endif %}</button>
   </div>
 </form>
+
+{% if transaction %}
+  <details class="danger-zone">
+    <summary>{% icon "trash-2" "icon-sm" %}Excluir movimentação</summary>
+    <form method="post" action="{% url 'ledger:transaction_delete' transaction.pk %}">
+      {% csrf_token %}
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      <p class="text-sm">A exclusão não pode ser desfeita.</p>
+      <button class="btn btn-danger" type="submit">Confirmar exclusão</button>
+    </form>
+  </details>
+{% endif %}
