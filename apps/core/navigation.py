@@ -4,6 +4,7 @@ e se ativam sozinhas quando a rota passa a existir."""
 from dataclasses import dataclass
 from typing import Any
 
+from django.conf import settings
 from django.http import HttpRequest
 from django.urls import NoReverseMatch, reverse
 
@@ -48,4 +49,5 @@ def navigation(request: HttpRequest) -> dict[str, Any]:
         "new_transaction_url": _url("ledger:transaction_create"),
         # Com login automático, "Sair" entraria de novo na hora: o botão é escondido.
         "dev_auto_login": dev_auto_login_enabled(),
+        "demo_database": getattr(settings, "DEMO_DATABASE", False),
     }

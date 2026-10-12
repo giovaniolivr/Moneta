@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import ProtectedError
+from django.db.models import RestrictedError
 from django.utils import timezone
 
 from apps.core.money import MAX_CENTS
@@ -225,9 +225,9 @@ class TestUpdateAndDelete:
         self, user: Any, checking: Account, food: Category
     ) -> None:
         create_transaction(user, expense(checking, food, 100))
-        with pytest.raises(ProtectedError):
+        with pytest.raises(RestrictedError):
             food.delete()
-        with pytest.raises(ProtectedError):
+        with pytest.raises(RestrictedError):
             checking.delete()
 
 
@@ -340,3 +340,14 @@ class TestTagMergeMovesTransactions:
     def test_category_can_be_created_and_used(self, user: Any, checking: Account) -> None:
         pets = create_category(user, name="Pets", kind="expense")
         assert create_transaction(user, expense(checking, pets, 100)).category == pets
+
+
+def test_deleting_user_removes_all_their_data(
+    user: Any, other_user: Any, checking: Account, food: Category
+) -> None:
+    create_transaction(user, expense(checking, food, 100, tags=["Mercado"]))
+    user.delete()
+    assert not Transaction.objects.filter(owner_id=user.pk).exists()
+    assert not Account.objects.filter(owner_id=user.pk).exists()
+    assert not Tag.objects.filter(owner_id=user.pk).exists()
+    assert Account.objects.for_user(other_user).exists()

@@ -1,6 +1,7 @@
 """Configuração comum a todos os ambientes."""
 
 from pathlib import Path
+from typing import Any
 
 import django_stubs_ext
 import environ
@@ -64,20 +65,27 @@ TEMPLATES = [
     },
 ]
 
+
 # Banco -----------------------------------------------------------------------
-DATABASES = {
-    "default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
-}
-if DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":
-    DATABASES["default"]["OPTIONS"] = {
-        "transaction_mode": "IMMEDIATE",
-        "init_command": (
-            "PRAGMA journal_mode=WAL;"
-            "PRAGMA synchronous=NORMAL;"
-            "PRAGMA foreign_keys=ON;"
-            "PRAGMA busy_timeout=5000;"
-        ),
-    }
+def database(default_url: str) -> dict[str, Any]:
+    """Config do banco a partir de DATABASE_URL (ou do padrão), com ajustes para SQLite."""
+    config: dict[str, Any] = env.db("DATABASE_URL", default=default_url)
+    if config["ENGINE"] == "django.db.backends.sqlite3":
+        config["OPTIONS"] = {
+            "transaction_mode": "IMMEDIATE",
+            "init_command": (
+                "PRAGMA journal_mode=WAL;"
+                "PRAGMA synchronous=NORMAL;"
+                "PRAGMA foreign_keys=ON;"
+                "PRAGMA busy_timeout=5000;"
+            ),
+        }
+    return config
+
+
+DATABASES = {"default": database(f"sqlite:///{BASE_DIR / 'db.sqlite3'}")}
+# Banco com dados fictícios (ver `manage.py seed_demo`): a interface mostra um aviso.
+DEMO_DATABASE = False
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Autenticação ----------------------------------------------------------------

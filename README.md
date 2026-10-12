@@ -57,9 +57,14 @@ Requer [uv](https://docs.astral.sh/uv/) (instala o Python 3.14 automaticamente).
 uv sync
 cp .env.example .env            # e gere uma DJANGO_SECRET_KEY (instrução no arquivo)
 uv run python manage.py migrate
-uv run python manage.py createsuperuser
+uv run python manage.py seed_demo   # ~6 meses de dados fictícios (usuário "demo")
 uv run python manage.py runserver
 ```
+
+Em desenvolvimento o banco padrão é o **`db-demo.sqlite3`, só com dados fictícios** (a interface
+mostra o aviso "Dados fictícios"). `seed_demo` pode ser rodado de novo a qualquer momento para
+recriar os dados. Para usar dados reais, aponte `DATABASE_URL=sqlite:///db.sqlite3` no `.env` e
+crie seu usuário com `createsuperuser`.
 
 Acesse http://127.0.0.1:8000 — em desenvolvimento o login é automático (somente localhost; desative com
 `DEV_AUTO_LOGIN=0` no `.env`). Não há cadastro público.

@@ -256,7 +256,8 @@ Regras-chave (testadas):
   dono em contas/categoria, tipo da categoria = tipo da movimentação, data não futura (projeções
   são da fase 2).
 - Contas/categorias arquivadas não recebem movimentações novas; as antigas seguem editáveis.
-- Conta e categoria com histórico são protegidas contra exclusão (`PROTECT`): arquiva-se.
+- Conta e categoria com histórico são protegidas contra exclusão (`RESTRICT`): arquiva-se.
+  `RESTRICT` (e não `PROTECT`) permite excluir o **usuário** com todos os dados de uma vez.
 - Entrada única `TransactionData` (dataclass) para criar/editar — reaproveitada por formulários,
   importação, API e assistente.
 

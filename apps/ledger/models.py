@@ -80,11 +80,11 @@ class Transaction(OwnedModel):
     amount_cents = models.BigIntegerField("valor (centavos)")
     date = models.DateField("data")
     account = models.ForeignKey(
-        Account, on_delete=models.PROTECT, related_name="transactions", verbose_name="conta"
+        Account, on_delete=models.RESTRICT, related_name="transactions", verbose_name="conta"
     )
     destination_account = models.ForeignKey(
         Account,
-        on_delete=models.PROTECT,
+        on_delete=models.RESTRICT,
         related_name="incoming_transfers",
         null=True,
         blank=True,
@@ -92,7 +92,7 @@ class Transaction(OwnedModel):
     )
     category = models.ForeignKey(
         "taxonomy.Category",
-        on_delete=models.PROTECT,
+        on_delete=models.RESTRICT,
         related_name="transactions",
         null=True,
         blank=True,

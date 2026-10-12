@@ -31,6 +31,9 @@
       {% endfor %}
     </nav>
 
+    {% if demo_database %}
+      <span class="badge badge-demo" title="Banco de demonstração (manage.py seed_demo)">{% icon "database" "icon-sm" %}<span class="nav-label">Dados fictícios</span></span>
+    {% endif %}
     <div class="sidebar-footer">
       <span class="nav-label" title="{{ user.get_username }}">{{ user.get_short_name|default:user.get_username }}</span>
       <span class="sidebar-actions">
@@ -49,6 +52,7 @@
 
   <header class="topbar">
     <a class="brand" href="{% url 'home' %}"><span class="brand-mark">M</span>Moneta</a>
+    {% if demo_database %}<span class="badge badge-demo">Dados fictícios</span>{% endif %}
     <span>
       <button class="btn btn-ghost btn-icon theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema claro/escuro">
         {% icon "sun" "icon-sun" %}{% icon "moon" "icon-moon" %}

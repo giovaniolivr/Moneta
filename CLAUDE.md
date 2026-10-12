@@ -63,6 +63,11 @@ nomes de entidades passam por `apps.core.names` (exibição limpa + chave normal
 Fixtures de teste compartilhadas (`user`, `other_user`) em `conftest.py`; todo service novo
 precisa de teste de isolamento entre usuários.
 
+## Dados
+- Dev usa por padrão `db-demo.sqlite3` (fictício). `uv run python manage.py seed_demo` recria o
+  usuário `demo` com ~6 meses de dados (`apps/ledger/demo.py`, determinístico). O comando recusa
+  bancos cujo nome não contém "demo". **Nunca** gravar dados de teste no `db.sqlite3` (dados reais).
+
 ## Comandos
 ```bash
 uv run python manage.py runserver     # dev local (settings.dev é o padrão do manage.py)
@@ -71,7 +76,8 @@ uv run ruff check . && uv run ruff format .
 uv run mypy .                         # strict + django-stubs
 uv run python manage.py makemigrations && uv run python manage.py migrate
 ```
-Antes de concluir qualquer tarefa: pytest, ruff e mypy verdes.
+Antes de concluir qualquer tarefa: pytest, ruff e mypy verdes. Se o mypy acusar de repente
+"Couldn't resolve related manager"/campos de `OwnedModel`, é cache: `rm -rf .mypy_cache`.
 Avisos de depreciação do Django quebram os testes de propósito (upgrade previsível).
 Toda nova rota é coberta automaticamente por `apps/core/tests/test_access.py` (exige login);
 rotas públicas precisam ser adicionadas explicitamente em `PUBLIC_URL_NAMES`.
