@@ -458,6 +458,19 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 19 ✅ | Metas (`apps/goals`) sobre o saldo de uma conta | aporte mensal necessário vs. capacidade de poupança |
 | 20 ✅ | Dashboard realizado × previsto + gasto variável estimado na projeção | resumo só para quem usa planejamento |
 
+### Roadmap da Fase 3 — investimentos e estratégias de compra
+
+| # | Entrega | Pronto quando |
+|---|---------|---------------|
+| 21 ✅ | Núcleo puro (`apps/investments/domain`): dias úteis (feriados nacionais), taxa diária (CDI %, prefixado, poupança), IR regressivo e IOF por aporte, carteira com aportes e resgates (PEPS) | testes contra valores calculados à mão |
+| 22 | Taxas de mercado (CDI, Selic, IPCA): histórico no banco, busca na API SGS do Banco Central sob demanda, valor manual | sem rede nos testes; falha de rede não quebra nada |
+| 23 | Produtos de investimento (modelos editáveis) e produto da conta | Caixinha/CDB/LCI/poupança/Tesouro Selic configuráveis |
+| 24 | Rendimento estimado (líquido) na projeção de saldo e nas metas | declarado como estimativa |
+| 25 | Simulador de investimento: valor inicial + aportes + prazo, produtos lado a lado | bruto, IOF, IR, líquido, gráfico + tabela |
+| 26 | Estratégias de compra (1): à vista com desconto × parcelado sem/com juros (dinheiro rendendo até cada parcela) × entrada + parcelas | custo real na mesma data-base + impacto mensal |
+| 27 | Estratégias de compra (2): juntar e comprar depois × comprar agora; quanto guardar por mês; recomendação com evidência e ligação com metas/projeção | escolhe a que menos pesa no bolso |
+| 28 | Polimento da Fase 3 | |
+
 ## 11. Preparação para os módulos futuros
 
 - **Objetivos (Fase 2)**: novo app `goals`; lê capacidade de poupança via `analytics.selectors`
@@ -517,6 +530,14 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
     a mais próxima por mês, cada lançamento uma vez só). Ligado por padrão, com opção de desligar.
 13. Metas medem o progresso pelo **saldo de uma conta** (ex.: Caixinha); aportes são as
     transferências que o usuário já faz.
+
+**Tomadas para a Fase 3 (2026-10-12)**
+17. Taxas de mercado: API SGS do Banco Central **sob demanda** (comando/botão), histórico guardado
+    no banco, valor manual sobrescreve. É o único acesso à internet do app.
+18. Rendimento das contas é **só estimativa** (projeção, metas, simulador); nada é lançado sozinho.
+19. Estratégias de compra: comparar o máximo de alternativas pelo **custo real na mesma
+    data-base** e pelo **impacto mensal no bolso**, recomendando a que menos pesa — com evidência.
+    Taxas de produtos (ex.: Caixinha Turbo) são modelos editáveis, nunca números cravados.
 
 **Adiadas**
 Deploy/hospedagem · Postgres · API · subcategorias · orçamentos · rate limit · tarefas em fundo ·

@@ -59,8 +59,18 @@ pytest · ruff · mypy (strict)
 - [x] 19. Metas sobre o saldo de uma conta: aporte mensal necessário, ritmo real de aportes, capacidade de poupança e data estimada
 - [x] 20. Dashboard realizado × previsto: resultado previsto do mês, saldo previsto, próximas previstas, orçamentos e metas; projeção com gasto do dia a dia estimado
 
-**Próximas fases:** simulador de investimentos e estratégias de compra → pesquisa de preços →
-assistente com IA.
+**Fase 3 — investimentos e estratégias de compra**
+
+- [x] 21. Núcleo de cálculo: dias úteis com feriados nacionais, CDI %, prefixado e poupança, IR regressivo e IOF por aporte, carteira com resgates PEPS
+- [ ] 22. Taxas de mercado (Banco Central sob demanda + manual)
+- [ ] 23. Produtos de investimento e produto da conta
+- [ ] 24. Rendimento estimado na projeção e nas metas
+- [ ] 25. Simulador de investimento
+- [ ] 26. Estratégias de compra: à vista × parcelado × entrada + parcelas
+- [ ] 27. Estratégias de compra: juntar e comprar depois, quanto guardar por mês, recomendação
+- [ ] 28. Polimento da Fase 3
+
+**Próximas fases:** pesquisa de preços → assistente com IA.
 
 ## Rodando localmente
 

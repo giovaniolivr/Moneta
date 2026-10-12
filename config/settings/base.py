@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "apps.portability",
     "apps.planning",
     "apps.goals",
+    "apps.investments",
 ]
 
 MIDDLEWARE = [

@@ -116,6 +116,10 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
 - Gasto variável: `planning.selectors.variable_spending()` (despesas sem recorrência/parcela,
   descontando histórico manual que casa com uma recorrência). Usado em `projection_data()` e
   `month_outlook()`. Resumo da dashboard: `dashboard.views.planning_summary()` (só período "mes").
+- Investimentos (`apps/investments/domain`, puro): `calendar` (dias úteis, feriados nacionais),
+  `rates` (`Yield.factor(start, end)`: CDI %, prefixado 252, poupança por aniversário), `taxes`
+  (IOF/IR regressivos por aporte), `portfolio` (lotes + resgate PEPS). Decimal por dentro,
+  centavos (`int`) nas saídas. Taxas de produto nunca cravadas no código: são configuração.
 - Exclusão de movimentação é desfazível: `transaction_snapshot()` vai para a sessão e a mensagem
   ganha o botão "Desfazer" (`done(..., extra_tags="undo")` → `ledger:transaction_restore`).
 - Dashboard: `?mes=AAAA-MM` escolhe um mês (navegação ◂ ▸, nunca futuro); usuário sem nenhuma
