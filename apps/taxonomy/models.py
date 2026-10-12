@@ -1,10 +1,6 @@
-from typing import Any
-
-from django.core.exceptions import ValidationError
 from django.db import models
 
-from apps.core.models import OwnedModel
-from apps.core.names import InvalidNameError, clean_display_name, normalize_name
+from apps.core.models import NormalizedNameModel, OwnedModel
 
 
 class CategoryKind(models.TextChoices):
@@ -26,9 +22,7 @@ class ColorSlot(models.TextChoices):
     C8 = "8", "Cor 8"
 
 
-class Category(OwnedModel):
-    name = models.CharField("nome", max_length=60)
-    normalized_name = models.CharField(max_length=60, editable=False, blank=True)  # calculado
+class Category(NormalizedNameModel, OwnedModel):
     kind = models.CharField("tipo", max_length=10, choices=CategoryKind.choices)
     color = models.CharField("cor", max_length=2, choices=ColorSlot.choices, default=ColorSlot.C1)
     icon = models.CharField("ícone", max_length=40, blank=True)
@@ -47,19 +41,45 @@ class Category(OwnedModel):
         ]
         indexes = [models.Index(fields=["owner", "kind", "is_archived"])]
 
+
+class Tag(NormalizedNameModel, OwnedModel):
+    """Classificação livre e transversal às categorias ("Delivery", "Uber", "Faculdade").
+
+    O nome de exibição é o da criação; qualquer grafia equivalente ("MERCADO", " mercado ")
+    resolve para a mesma tag. Equivalências semânticas ("Supermercado" = "Mercado") só existem
+    por ação explícita do usuário, via `TagAlias` (mesclagem ou apelido).
+    """
+
+    class Meta:
+        verbose_name = "tag"
+        verbose_name_plural = "tags"
+        ordering = ["normalized_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner", "normalized_name"],
+                name="tag_unique_name_per_owner",
+                violation_error_message="Já existe uma tag com este nome.",
+            ),
+        ]
+
+
+class TagAlias(OwnedModel):
+    """Grafia alternativa que resolve para uma tag (ex.: "supermercado" → Mercado)."""
+
+    normalized_alias = models.CharField("apelido normalizado", max_length=60)
+    tag = models.ForeignKey(Tag, on_delete=models.CASCADE, related_name="aliases")
+
+    class Meta:
+        verbose_name = "apelido de tag"
+        verbose_name_plural = "apelidos de tags"
+        ordering = ["normalized_alias"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner", "normalized_alias"],
+                name="tagalias_unique_per_owner",
+                violation_error_message="Este apelido já está em uso.",
+            ),
+        ]
+
     def __str__(self) -> str:
-        return self.name
-
-    def normalize(self) -> None:
-        self.name = clean_display_name(self.name)
-        self.normalized_name = normalize_name(self.name)
-
-    def clean(self) -> None:
-        try:
-            self.normalize()
-        except InvalidNameError as exc:
-            raise ValidationError({"name": str(exc)}) from exc
-
-    def save(self, *args: Any, **kwargs: Any) -> None:
-        self.normalize()
-        super().save(*args, **kwargs)
+        return f"{self.normalized_alias} → {self.tag}"

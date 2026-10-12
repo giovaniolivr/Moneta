@@ -1,11 +1,14 @@
 """Modelos base compartilhados por todos os apps."""
 
 import uuid
-from typing import Self
+from typing import Any, Self
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
+from django.core.exceptions import ValidationError
 from django.db import models
+
+from .names import InvalidNameError, clean_display_name, normalize_name
 
 
 class TimeStampedModel(models.Model):
@@ -42,3 +45,33 @@ class OwnedModel(TimeStampedModel):
 
     class Meta:
         abstract = True
+
+
+class NormalizedNameModel(models.Model):
+    """Nome de exibição livre + chave normalizada (sem caixa/acentos) para unicidade e busca.
+
+    Subclasses declaram a `UniqueConstraint` sobre `normalized_name` no escopo adequado.
+    """
+
+    name = models.CharField("nome", max_length=60)
+    normalized_name = models.CharField(max_length=60, editable=False, blank=True)  # calculado
+
+    class Meta:
+        abstract = True
+
+    def __str__(self) -> str:
+        return self.name
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        self.normalize()
+        super().save(*args, **kwargs)
+
+    def clean(self) -> None:
+        try:
+            self.normalize()
+        except InvalidNameError as exc:
+            raise ValidationError({"name": str(exc)}) from exc
+
+    def normalize(self) -> None:
+        self.name = clean_display_name(self.name)
+        self.normalized_name = normalize_name(self.name)

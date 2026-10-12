@@ -215,9 +215,17 @@ Ex.: `"  MERCADO "`, `"Mercado"`, `"mercado"` → `mercado`; `"Saúde"` → `sau
 
 - Criar tag: normaliza → procura em `Tag.normalized_name` → procura em `TagAlias` → senão cria.
   O `name` de exibição é o da primeira criação (editável).
-- **Mesclar** "Supermercado" em "Mercado" (ação explícita do usuário): move as associações,
-  cria `TagAlias("supermercado" → Mercado)`, apaga a tag de origem. Digitar "supermercado"
+- **Mesclar** "Supermercado" em "Mercado" (ação explícita do usuário): move as associações
+  (de forma genérica, para qualquer modelo com M2M para `Tag`), transfere os apelidos da origem,
+  cria `TagAlias("supermercado" → Mercado)` e apaga a tag de origem. Digitar "supermercado"
   depois cai automaticamente em "Mercado". Nada é mesclado por similaridade semântica.
+- **Apelido manual**: permitido se o texto não for nome de outra tag (nesse caso, o caminho é
+  mesclar) nem apelido de outra tag.
+- **Renomear** não cria apelido para o nome antigo (equivalências nunca são implícitas); se o
+  novo nome era apelido da própria tag, o apelido é absorvido.
+- **Autocomplete** (`search_tags`): busca por nome e apelido em qualquer posição, prefixos primeiro.
+- A base `core.models.NormalizedNameModel` concentra nome de exibição + chave normalizada para
+  contas, categorias e tags.
 - Acentos são removidos na forma normalizada (decidido); o nome de exibição mantém os acentos.
 
 ### Transaction
@@ -377,8 +385,8 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 0 ✅ | Esqueleto: uv, Django, settings divididos, ruff/mypy/pytest, `.gitignore`, `core`, `users`, login | `pytest` verde; login funciona; nenhuma página acessível sem login |
 | 1 ✅ | `core.money` + filtros de template | testes de parse/format BRL |
 | 2 ✅ | Contas e categorias (models, seed padrão, admin) | seed cria categorias para um usuário novo |
-| 3 | Tags + normalização + aliases + merge | testes de normalização e merge |
-| 4 | Transaction + services (CRUD, validações, transferências) | regras da §4 testadas |
+| 3 ✅ | Tags + normalização + aliases + merge | testes de normalização e merge |
+| 4 | Transaction + services (CRUD, validações, transferências) | regras da §4 testadas; merge de tags move as associações das movimentações |
 | 5 | Layout base + tokens do DESIGN.md (Tailwind) + componentes | tela vazia navegável no celular |
 | 6 | Formulário rápido de nova movimentação | registro em < 10 s no celular |
 | 7 | Lista de movimentações + `TransactionFilter` | filtros combináveis, edição, exclusão |
