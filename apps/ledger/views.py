@@ -339,6 +339,7 @@ def account_create(request: AuthenticatedHttpRequest) -> HttpResponse:
                 opening_balance_cents=form.opening_balance_cents(),
                 opening_date=data["opening_date"],
                 billing=form.billing(),
+                product=data.get("product"),
             )
         except ValidationError as error:
             apply_service_errors(form, error, BILLING_ERRORS)
@@ -360,6 +361,7 @@ def account_update(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpResp
                 opening_balance_cents=form.opening_balance_cents(),
                 opening_date=data["opening_date"],
                 billing=form.billing(),
+                product=data.get("product"),
             )
         except ValidationError as error:
             apply_service_errors(form, error, BILLING_ERRORS)

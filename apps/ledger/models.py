@@ -38,6 +38,15 @@ class Account(NormalizedNameModel, OwnedModel):
         "dia de fechamento", null=True, blank=True
     )
     payment_due_day = models.PositiveSmallIntegerField("dia de vencimento", null=True, blank=True)
+    # Como o saldo rende (estimativas de projeção, metas e simulações). Não vale para cartão.
+    product = models.ForeignKey(
+        "investments.InvestmentProduct",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="accounts",
+        verbose_name="produto (rendimento)",
+    )
     payment_account = models.ForeignKey(
         "self",
         on_delete=models.SET_NULL,
@@ -86,7 +95,12 @@ class Account(NormalizedNameModel, OwnedModel):
                 errors["payment_account"] = "Conta inválida."
             elif payer.is_liability or payer.pk == self.pk:
                 errors["payment_account"] = "Escolha uma conta que não seja cartão."
-        if not self.is_liability:
+        product = self.product if self.product_id else None
+        if product is not None and product.owner_id != self.owner_id:
+            errors["product"] = "Produto inválido."
+        if self.is_liability:
+            self.product = None
+        else:
             self.statement_closing_day = self.payment_due_day = None
             self.payment_account = None
         if errors:

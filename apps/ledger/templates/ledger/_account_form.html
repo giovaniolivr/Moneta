@@ -37,6 +37,13 @@
   </div>
   <p class="field-help">{{ form.opening_date.help_text }}</p>
 
+  <div class="field" data-only-kind="other">
+    <label for="{{ form.product.id_for_label }}">{{ form.product.label }}</label>
+    {{ form.product }}
+    <p class="field-help">Usado para estimar o rendimento na projeção, nas metas e no simulador. Cadastre produtos em <a href="{% url 'investments:index' %}">Investimentos</a>.</p>
+    {% for error in form.product.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
+
   <fieldset class="field" data-only-kind="credit_card">
     <legend>Fatura</legend>
     <div class="form-row">

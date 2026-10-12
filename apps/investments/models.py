@@ -1,6 +1,9 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
-from apps.core.models import OwnedModel
+from apps.core.models import NormalizedNameModel, OwnedModel
+
+from .domain.products import Indexer, ProductSpec, Taxation
 
 
 class Series(models.TextChoices):
@@ -50,3 +53,75 @@ class RateOverride(OwnedModel):
                 violation_error_message="Informe uma taxa entre -50%% e 100%% ao ano.",
             ),
         ]
+
+
+class InvestmentProduct(NormalizedNameModel, OwnedModel):
+    """Como um dinheiro rende (ex.: Caixinha 100% do CDI). Configuração do usuário — as taxas de
+    mercado ficam em `MarketRate`/`RateOverride`."""
+
+    indexer = models.CharField(
+        "indexador",
+        max_length=10,
+        choices=[
+            (Indexer.CDI, "% do CDI"),
+            (Indexer.SELIC, "% da Selic"),
+            (Indexer.PREFIXED, "Prefixado (% a.a.)"),
+            (Indexer.POUPANCA, "Poupança"),
+        ],
+    )
+    rate_percent = models.DecimalField(
+        "taxa (%)", max_digits=7, decimal_places=3, null=True, blank=True
+    )
+    taxation = models.CharField(
+        "tributação",
+        max_length=10,
+        choices=[
+            (Taxation.TAXED, "IR regressivo + IOF"),
+            (Taxation.IR_EXEMPT, "Isento de IR (LCI/LCA)"),
+            (Taxation.EXEMPT, "Isento (poupança)"),
+        ],
+        default=Taxation.TAXED,
+    )
+    daily_liquidity = models.BooleanField("liquidez diária", default=True)
+
+    class Meta:
+        verbose_name = "produto de investimento"
+        verbose_name_plural = "produtos de investimento"
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner", "normalized_name"],
+                name="investmentproduct_unique_name",
+                violation_error_message="Já existe um produto com este nome.",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(rate_percent__isnull=True)
+                | models.Q(rate_percent__gt=0, rate_percent__lt=1000),
+                name="investmentproduct_rate_range",
+                violation_error_message="Informe uma taxa maior que zero.",
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.indexer != Indexer.POUPANCA and self.rate_percent is None:
+            raise ValidationError({"rate_percent": "Informe a taxa que o banco paga."})
+        if self.indexer == Indexer.POUPANCA:
+            self.rate_percent = None
+            self.taxation = Taxation.EXEMPT
+
+    @property
+    def spec(self) -> ProductSpec:
+        return ProductSpec(Indexer(self.indexer), self.rate_percent, Taxation(self.taxation))
+
+    @property
+    def rate_label(self) -> str:
+        match self.indexer:
+            case Indexer.POUPANCA:
+                return "Poupança"
+            case Indexer.PREFIXED:
+                return f"{self.rate_percent:.2f}% a.a.".replace(".", ",")
+            case Indexer.SELIC:
+                return f"{self.rate_percent:.0f}% da Selic"
+            case _:
+                return f"{self.rate_percent:.0f}% do CDI"

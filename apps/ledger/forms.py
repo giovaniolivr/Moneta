@@ -9,6 +9,7 @@ from django.utils import timezone
 from apps.core.forms import MoneyField, apply_service_errors
 from apps.core.forms import has_data as _has_data
 from apps.core.money import NBSP, format_brl
+from apps.investments.models import InvestmentProduct
 from apps.taxonomy.models import Category, Tag
 from apps.taxonomy.selectors import list_tags
 from apps.users.models import User
@@ -284,6 +285,12 @@ class AccountForm(forms.Form):
         label="Fecha no dia", required=False, min_value=1, max_value=31
     )
     due_day = forms.IntegerField(label="Vence no dia", required=False, min_value=1, max_value=31)
+    product = forms.ModelChoiceField(
+        label="Produto (rendimento)",
+        queryset=InvestmentProduct.objects.none(),
+        required=False,
+        empty_label="Não rende / não informar",
+    )
     payment_account = forms.ModelChoiceField(
         label="Fatura paga pela conta",
         queryset=Account.objects.none(),
@@ -308,12 +315,14 @@ class AccountForm(forms.Form):
                 "closing_day": instance.statement_closing_day,
                 "due_day": instance.payment_due_day,
                 "payment_account": instance.payment_account_id,
+                "product": instance.product_id,
             }
         super().__init__(*args, **kwargs)
         self.instance = instance
         self.fields["opening_date"].initial = timezone.localdate
         owner = user if user is not None else (instance.owner if instance else None)
         if owner is not None:
+            self.fields["product"].queryset = InvestmentProduct.objects.for_user(owner)  # type: ignore[attr-defined]
             self.fields["payment_account"].queryset = (  # type: ignore[attr-defined]
                 Account.objects.for_user(owner)
                 .exclude(kind=AccountKind.CREDIT_CARD)
@@ -327,6 +336,7 @@ class AccountForm(forms.Form):
             "closing_day",
             "due_day",
             "payment_account",
+            "product",
         ):
             self.fields[name].widget.attrs["class"] = "input"
         if instance is not None:

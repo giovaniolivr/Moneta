@@ -1,5 +1,5 @@
 {% extends "layouts/app.html" %}
-{% load ui %}
+{% load ui investments_ui %}
 
 {% block title %}Investimentos{% endblock %}
 
@@ -43,4 +43,34 @@
   </div>
   <p class="text-sm muted mt-4">“Atualizar” busca CDI (anualizado, base 252), Selic meta e IPCA acumulado em 12 meses na API pública do Banco Central — é o único acesso à internet do Moneta e só acontece quando você pede. Um valor seu tem prioridade; deixe em branco e salve para voltar ao publicado.</p>
 </section>
+<section class="card mt-4" aria-labelledby="products-title">
+  <div class="card-header">
+    <h2 id="products-title">Produtos</h2>
+    <a class="btn btn-secondary btn-sm" href="{% url 'investments:product_create' %}" data-drawer>{% icon "plus" "icon-sm" %}Novo produto</a>
+  </div>
+  {% if products %}
+    <ul class="list">
+      {% for row in products %}
+        <li>
+          <a class="list-item list-item-link" href="{% url 'investments:product_update' row.product.pk %}" data-drawer>
+            <span class="avatar-icon">{% icon "trending-up" %}</span>
+            <span class="list-item-main">
+              <span class="list-item-title">{{ row.product.name }}</span>
+              <span class="list-item-meta">{{ row.product.rate_label }} · {{ row.product.get_taxation_display }}{% if row.product.daily_liquidity %} · resgate a qualquer dia{% endif %}{% if row.accounts %} · contas: {{ row.accounts|join:", " }}{% endif %}</span>
+            </span>
+            <span class="text-sm">{% if row.missing %}<span class="muted">falta a taxa {{ row.missing }}</span>{% else %}<strong>{{ row.gross_year|percent_from_fraction }}</strong> <span class="muted">bruto · {{ row.net_year|percent_from_fraction }} líquido em 1 ano</span>{% endif %}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="text-sm muted mt-4">Rentabilidade em 1 ano com as taxas em uso acima (estimativa; o CDI muda). Para uma conta render, escolha o produto no cadastro da conta.</p>
+  {% else %}
+    <div class="empty-state">
+      {% icon "trending-up" %}
+      <p class="empty-state-title">Nenhum produto</p>
+      <p class="text-sm">Cadastre como seu dinheiro rende (ex.: Caixinha 100% do CDI) para estimar rendimentos e comparar opções.</p>
+    </div>
+  {% endif %}
+</section>
+
 {% endblock %}

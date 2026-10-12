@@ -10,6 +10,7 @@ import random
 from collections import defaultdict
 from collections.abc import Iterator
 from dataclasses import dataclass
+from decimal import Decimal
 
 from django.db import transaction
 
@@ -365,6 +366,12 @@ def seed_demo(
     _seed_budgets(user, cat)
     _seed_card(user, cat, today=today, card=card, checking=checking)
     from apps.goals.services import create_goal
+    from apps.investments.services import ProductData, create_product
+
+    caixinha = create_product(
+        user, ProductData("Caixinha", "cdi", Decimal(100), "taxed", daily_liquidity=True)
+    )
+    update_account(savings, product=caixinha)
 
     create_goal(
         user,

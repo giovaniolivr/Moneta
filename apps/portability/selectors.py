@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from apps.core.money import cents_to_decimal
 from apps.goals.models import Goal
+from apps.investments.models import InvestmentProduct
 from apps.ledger.models import Account, Transaction
 from apps.planning.models import Budget, InstallmentPlan, Recurrence
 from apps.taxonomy.models import Category, Tag
@@ -44,6 +45,17 @@ def _entry(obj: Transaction | Recurrence) -> dict[str, Any]:
 
 def export_payload(user: UserLike) -> Payload:
     """Todos os dados do usuário no formato do Moneta (sem nada que identifique o usuário)."""
+    products = [
+        {
+            "id": str(p.pk),
+            "name": p.name,
+            "indexer": p.indexer,
+            "rate_percent": None if p.rate_percent is None else str(p.rate_percent),
+            "taxation": p.taxation,
+            "daily_liquidity": p.daily_liquidity,
+        }
+        for p in InvestmentProduct.objects.for_user(user).order_by("created_at", "pk")
+    ]
     accounts = [
         {
             "id": str(a.pk),
@@ -55,6 +67,7 @@ def export_payload(user: UserLike) -> Payload:
             "statement_closing_day": a.statement_closing_day,
             "payment_due_day": a.payment_due_day,
             "payment_account": _str(a.payment_account_id),
+            "product": _str(a.product_id),
         }
         for a in Account.objects.for_user(user).order_by("created_at", "pk")
     ]
@@ -142,6 +155,7 @@ def export_payload(user: UserLike) -> Payload:
         "format": FORMAT,
         "schema_version": SCHEMA_VERSION,
         "exported_at": timezone.now().isoformat(timespec="seconds"),
+        "products": products,
         "accounts": accounts,
         "categories": categories,
         "tags": tags,

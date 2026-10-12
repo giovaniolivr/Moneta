@@ -3,8 +3,10 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
+from django.db.models import QuerySet
 
-from .models import MarketRate, RateOverride, Series
+from .domain.products import MissingRateError
+from .models import InvestmentProduct, MarketRate, RateOverride, Series
 
 UserLike = AbstractBaseUser | AnonymousUser
 
@@ -35,7 +37,9 @@ class EffectiveRate:
             return f"Banco Central, {self.published.date:%d/%m/%Y}"
         return "sem dado"
 
-    def is_stale(self, today: datetime.date, days: int = 7) -> bool:
+    def is_stale(self, today: datetime.date) -> bool:
+        # O IPCA é mensal e sai com ~1 mês de defasagem; CDI e Selic são diários.
+        days = 62 if self.series == Series.IPCA else 7
         return self.manual is None and (
             self.published is None or (today - self.published.date).days > days
         )
@@ -48,3 +52,33 @@ def effective_rates(user: UserLike) -> dict[Series, EffectiveRate]:
         published = MarketRate.objects.filter(series=series).order_by("-date").first()
         result[series] = EffectiveRate(series, published, manual.get(series))
     return result
+
+
+@dataclass(frozen=True)
+class ProductRow:
+    product: InvestmentProduct
+    gross_year: Decimal | None  # rentabilidade em 1 ano, fração
+    net_year: Decimal | None
+    missing: str  # taxa de mercado que falta para estimar ("CDI", "Selic") ou ""
+    accounts: list[str]
+
+
+def list_products(user: UserLike) -> QuerySet[InvestmentProduct]:
+    return InvestmentProduct.objects.for_user(user)
+
+
+def product_rows(user: UserLike, today: datetime.date) -> list[ProductRow]:
+    rates = effective_rates(user)
+    cdi, selic = rates[Series.CDI].annual, rates[Series.SELIC].annual
+    rows = []
+    for product in list_products(user).prefetch_related("accounts"):
+        gross: Decimal | None = None
+        net: Decimal | None = None
+        missing = ""
+        try:
+            gross, net = product.spec.one_year(cdi=cdi, selic=selic, start=today)
+        except MissingRateError as exc:
+            missing = str(exc)
+        accounts = [a.name for a in product.accounts.all() if a.owner_id == product.owner_id]
+        rows.append(ProductRow(product, gross, net, missing, accounts))
+    return rows

@@ -63,7 +63,7 @@ pytest · ruff · mypy (strict)
 
 - [x] 21. Núcleo de cálculo: dias úteis com feriados nacionais, CDI %, prefixado e poupança, IR regressivo e IOF por aporte, carteira com resgates PEPS
 - [x] 22. Taxas de mercado: CDI, Selic e IPCA do Banco Central sob demanda (tela Investimentos ou `manage.py atualizar_taxas`) e valor manual
-- [ ] 23. Produtos de investimento e produto da conta
+- [x] 23. Produtos de investimento (% do CDI, % da Selic, prefixado, poupança; IR/IOF ou isentos) com modelos prontos editáveis, rentabilidade estimada em 1 ano e produto da conta
 - [ ] 24. Rendimento estimado na projeção e nas metas
 - [ ] 25. Simulador de investimento
 - [ ] 26. Estratégias de compra: à vista × parcelado × entrada + parcelas

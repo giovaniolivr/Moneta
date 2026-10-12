@@ -114,6 +114,9 @@ class TestStorage:
         rate = effective_rates(user)[Series.SELIC]
         assert not rate.is_stale(D(2026, 10, 14))
         assert rate.is_stale(D(2026, 11, 1))
+        ipca = effective_rates(user)[Series.IPCA]  # mensal: divulgado em 01/09
+        assert not ipca.is_stale(D(2026, 10, 20))
+        assert ipca.is_stale(D(2026, 11, 5))
 
 
 @pytest.mark.django_db

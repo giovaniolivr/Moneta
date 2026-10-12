@@ -40,6 +40,9 @@ class CardBilling:
     payment_account: Account | None = None
 
 
+_KEEP: Any = object()  # sentinela: "não mexer neste campo"
+
+
 def _apply_billing(account: Account, billing: CardBilling | None) -> None:
     if billing is not None:
         account.statement_closing_day = billing.closing_day
@@ -55,11 +58,13 @@ def create_account(
     opening_balance_cents: int = 0,
     opening_date: datetime.date | None = None,
     billing: CardBilling | None = None,
+    product: Any = None,
 ) -> Account:
     account = Account(owner=user, name=name, kind=kind, opening_balance_cents=opening_balance_cents)
     if opening_date is not None:
         account.opening_date = opening_date
     _apply_billing(account, billing)
+    account.product = product
     return _validated_save(account)
 
 
@@ -70,9 +75,14 @@ def update_account(
     opening_balance_cents: int | None = None,
     opening_date: datetime.date | None = None,
     billing: CardBilling | None = None,
+    product: Any = _KEEP,
 ) -> Account:
-    """O tipo da conta não muda depois de criada: alteraria o significado do histórico."""
+    """O tipo da conta não muda depois de criada: alteraria o significado do histórico.
+
+    `product`: produto de investimento (rendimento estimado); omitido = mantém o atual."""
     _apply_billing(account, billing)
+    if product is not _KEEP:
+        account.product = product
     if name is not None:
         account.name = name
     if opening_balance_cents is not None:

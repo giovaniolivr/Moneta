@@ -1120,6 +1120,14 @@
     color: var(--color-muted);
   }
 
+  .checkbox-row {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+  }
+
   .inline-form {
     display: flex;
     align-items: center;

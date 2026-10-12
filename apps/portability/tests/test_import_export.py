@@ -4,6 +4,7 @@ import copy
 import datetime
 import json
 import uuid
+from decimal import Decimal
 from typing import Any
 
 import pytest
@@ -12,6 +13,8 @@ from django.utils import timezone
 from apps.analytics import selectors as analytics
 from apps.goals.models import Goal
 from apps.goals.services import create_goal
+from apps.investments.models import InvestmentProduct
+from apps.investments.services import ProductData, create_product
 from apps.ledger.models import Account, AccountKind, Transaction
 from apps.ledger.selectors import account_balances
 from apps.ledger.services import (
@@ -47,9 +50,13 @@ def data(user: Any) -> dict[str, Any]:
         user, name="Cartão", kind=AccountKind.CREDIT_CARD, opening_date=D(2026, 1, 1)
     )
     update_account(card, billing=CardBilling(closing_day=31, due_day=10, payment_account=checking))
+    caixinha = create_product(
+        user, ProductData("Caixinha", "cdi", Decimal("100"), "taxed", daily_liquidity=True)
+    )
     savings = create_account(
         user, name="Caixinha", kind=AccountKind.SAVINGS, opening_balance_cents=100_000
     )
+    update_account(savings, product=caixinha)
     cats = {c.name: c for c in Category.objects.for_user(user)}
     add_tag_alias(get_or_create_tag(user, "Mercado"), "supermercado")
 
@@ -127,6 +134,7 @@ def _wipe(user: Any) -> None:
     InstallmentPlan.objects.for_user(user).delete()
     Budget.objects.for_user(user).delete()
     Goal.objects.for_user(user).delete()
+    InvestmentProduct.objects.for_user(user).delete()
     TagAlias.objects.for_user(user).delete()
     Tag.objects.for_user(user).delete()
     Account.objects.for_user(user).delete()
@@ -145,6 +153,8 @@ def test_round_trip_preserves_everything(user: Any, data: Any) -> None:
     assert report.installment_plans.created == 1
     assert report.budgets.created == 2
     assert report.goals.created == 1
+    assert report.products.created == 1
+    assert Account.objects.for_user(user).get(name="Caixinha").product is not None
     assert Transaction.objects.for_user(user).filter(installment_number=10).exists()
     assert report.transactions.created == len(before["transactions"])
     assert Transaction.objects.for_user(user).filter(recurrence__isnull=False).exists()

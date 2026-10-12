@@ -12,7 +12,7 @@ from collections.abc import Callable
 from typing import Any
 
 FORMAT = "moneta"
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 Payload = dict[str, Any]
 
@@ -54,6 +54,12 @@ def _v6_to_v7(payload: Payload) -> Payload:
     return payload
 
 
+def _v7_to_v8(payload: Payload) -> Payload:
+    """v8: seção `products` (produtos de investimento); contas podem apontar para um."""
+    payload.setdefault("products", [])
+    return payload
+
+
 MIGRATIONS: dict[int, Callable[[Payload], Payload]] = {
     1: _v1_to_v2,
     2: _v2_to_v3,
@@ -61,8 +67,10 @@ MIGRATIONS: dict[int, Callable[[Payload], Payload]] = {
     4: _v4_to_v5,
     5: _v5_to_v6,
     6: _v6_to_v7,
+    7: _v7_to_v8,
 }
 SECTIONS = (
+    "products",
     "accounts",
     "categories",
     "tags",

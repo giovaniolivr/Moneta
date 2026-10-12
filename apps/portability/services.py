@@ -17,6 +17,7 @@ import json
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
 from typing import Any, TypeVar
 
 from django.core.exceptions import ValidationError
@@ -24,6 +25,7 @@ from django.db import models, transaction
 
 from apps.core.names import InvalidNameError, clean_display_name, normalize_name
 from apps.goals.models import Goal
+from apps.investments.models import InvestmentProduct
 from apps.ledger.models import Account, Transaction
 from apps.planning.models import Budget, InstallmentPlan, Recurrence
 from apps.taxonomy.models import Category, Tag
@@ -35,8 +37,8 @@ from .schema import InvalidFileError, Payload, upgrade
 MAX_FILE_BYTES = 20 * 1024 * 1024
 MAX_ERRORS = 50
 
-_N = TypeVar("_N", Account, Category, Tag)
-_R = TypeVar("_R", Account, Category, Tag, Recurrence, InstallmentPlan)
+_N = TypeVar("_N", Account, Category, Tag, InvestmentProduct)
+_R = TypeVar("_R", Account, Category, Tag, Recurrence, InstallmentPlan, InvestmentProduct)
 Item = dict[str, Any]
 
 
@@ -53,6 +55,7 @@ class Counts:
 
 @dataclass
 class ImportReport:
+    products: Counts = field(default_factory=Counts)
     accounts: Counts = field(default_factory=Counts)
     categories: Counts = field(default_factory=Counts)
     tags: Counts = field(default_factory=Counts)
@@ -64,6 +67,7 @@ class ImportReport:
 
     def sections(self) -> list[tuple[str, Counts]]:
         return [
+            ("Produtos de investimento", self.products),
             ("Contas", self.accounts),
             ("Categorias", self.categories),
             ("Tags", self.tags),
@@ -123,6 +127,7 @@ class _Importer:
         self.report = ImportReport()
         self.errors: list[str] = []
         self.accounts: dict[uuid.UUID, Account] = {}
+        self.products: dict[uuid.UUID, InvestmentProduct] = {}
         self.categories: dict[uuid.UUID, Category] = {}
         self.tags: dict[uuid.UUID, Tag] = {}
         self.recurrences: dict[uuid.UUID, Recurrence] = {}
@@ -230,6 +235,7 @@ class _Importer:
     # ───── Seções ─────
 
     def run(self, payload: Payload) -> None:
+        self.each(self.items(payload, "products", "Produto"), self.product)
         self.each(self.items(payload, "accounts", "Conta"), self.account)
         self.each(self.items(payload, "accounts", "Conta"), self.account_billing)
         self.each(self.items(payload, "categories", "Categoria"), self.category)
@@ -253,6 +259,22 @@ class _Importer:
         obj = self.upsert_named(Account, where, item, values, self.report.accounts)
         self.accounts[file_id] = obj
 
+    def product(self, where: str, item: Item) -> None:
+        file_id = self.uuid_field(item, "id", where)
+        raw_rate = self.field(item, "rate_percent", where, str, default=None)
+        try:
+            rate = None if raw_rate is None else Decimal(raw_rate)
+        except InvalidOperation:
+            raise self.error(where, f"taxa “{raw_rate}” inválida.") from None
+        values = {
+            "indexer": self.field(item, "indexer", where, str),
+            "rate_percent": rate,
+            "taxation": self.field(item, "taxation", where, str, default="taxed"),
+            "daily_liquidity": self.field(item, "daily_liquidity", where, bool, default=True),
+        }
+        counts = self.report.products
+        self.products[file_id] = self.upsert_named(InvestmentProduct, where, item, values, counts)
+
     def account_billing(self, where: str, item: Item) -> None:
         """2ª passada: a conta pagadora pode aparecer depois do cartão no arquivo."""
         account = self.accounts.get(self.uuid_field(item, "id", where))
@@ -265,6 +287,9 @@ class _Importer:
             "payment_due_day": self.field(item, "payment_due_day", where, int, default=None),
             "payment_account": self.ref(
                 self.accounts, Account, item, "payment_account", where, "conta pagadora"
+            ),
+            "product": self.ref(
+                self.products, InvestmentProduct, item, "product", where, "produto"
             ),
         }
         if any(getattr(account, k) != v for k, v in values.items()):

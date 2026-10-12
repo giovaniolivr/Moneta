@@ -125,6 +125,10 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
   CDI 4389, Selic meta 432, IPCA 12m 13522), por intervalo de datas até hoje, só HTTPS para
   api.bcb.gov.br; testes nunca acessam a rede (`fetch=` injetável). Mensagens de
   `violation_error_message` com "%" precisam de "%%".
+- Produtos: `InvestmentProduct` (do usuário) → `product.spec` (`investments/domain/products`) →
+  `Yield`/`TaxRule` com as taxas efetivas. `Account.product` (não vale para cartão). Modelos
+  prontos em `PRESETS` só preenchem o formulário; taxa que depende do banco vem em branco.
+  Export no formato v8.
 - Exclusão de movimentação é desfazível: `transaction_snapshot()` vai para a sessão e a mensagem
   ganha o botão "Desfazer" (`done(..., extra_tags="undo")` → `ledger:transaction_restore`).
 - Dashboard: `?mes=AAAA-MM` escolhe um mês (navegação ◂ ▸, nunca futuro); usuário sem nenhuma

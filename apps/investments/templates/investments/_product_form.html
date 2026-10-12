@@ -1,0 +1,40 @@
+{% load ui %}
+<form class="stack" method="post" action="{% if product %}{% url 'investments:product_update' product.pk %}{% else %}{% url 'investments:product_create' %}{% endif %}" novalidate>
+  {% csrf_token %}
+  {% include "components/drawer_header.html" %}
+  {% if not product %}
+    <div class="chips chips-compact" aria-label="Começar de um modelo">
+      {% for key, preset in presets.items %}
+        <a class="chip" href="{% url 'investments:product_create' %}?modelo={{ key }}" data-drawer>{{ preset.name }}</a>
+      {% endfor %}
+    </div>
+    <p class="field-help">Os modelos só preenchem o formulário. Confira a taxa no app do seu banco — onde ela depende do banco (Turbo, CDB, LCI/LCA), o campo vem em branco.</p>
+  {% endif %}
+  {% if form.non_field_errors %}<div class="alert alert-error" role="alert">{% icon "circle-alert" "icon-sm" %}{{ form.non_field_errors|join:" " }}</div>{% endif %}
+  {% for field in form %}
+    {% if field.name == "daily_liquidity" %}
+      <label class="checkbox-row">{{ field }} {{ field.label }}</label>
+    {% else %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+        {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+      </div>
+    {% endif %}
+  {% endfor %}
+  <div class="form-actions form-actions-single">
+    <button class="btn btn-primary" type="submit">{% if product %}Salvar alterações{% else %}Criar produto{% endif %}</button>
+  </div>
+</form>
+
+{% if product %}
+  <details class="danger-zone">
+    <summary>{% icon "trash-2" "icon-sm" %}Excluir produto</summary>
+    <form method="post" action="{% url 'investments:product_delete' product.pk %}">
+      {% csrf_token %}
+      <p class="text-sm">As contas que usam este produto continuam existindo, só sem rendimento estimado.</p>
+      <button class="btn btn-danger" type="submit">Confirmar exclusão</button>
+    </form>
+  </details>
+{% endif %}
