@@ -100,6 +100,20 @@ crie seu usuário com `createsuperuser`.
 Acesse http://127.0.0.1:8000 — em desenvolvimento o login é automático (somente localhost; desative com
 `DEV_AUTO_LOGIN=0` no `.env`). Não há cadastro público.
 
+## Uso real (PC + celular via Tailscale)
+
+O Moneta roda no seu PC (perfil `config.settings.personal`: banco `db.sqlite3`, DEBUG desligado,
+servidor waitress) e o celular acessa pela rede privada do [Tailscale](https://tailscale.com),
+que fornece HTTPS — dá para instalar como app no celular (PWA).
+
+1. `.env` com `DJANGO_SECRET_KEY` própria e `MONETA_HOSTS=<seu-pc>.<tailnet>.ts.net`.
+2. Criar seu usuário no banco real:
+   `$env:DJANGO_SETTINGS_MODULE="config.settings.personal"; uv run python manage.py migrate; uv run python manage.py createsuperuser`
+3. Iniciar: `powershell -File scripts/serve.ps1` (migra, prepara os estáticos e serve em 127.0.0.1:8000).
+4. Tailscale no PC e no celular (mesma conta) e, no PC: `tailscale serve --bg 8000`.
+5. No celular, abra `https://<seu-pc>.<tailnet>.ts.net` e use "Adicionar à tela inicial".
+6. Agendador de Tarefas do Windows: `scripts/serve.ps1` ao fazer logon e `scripts/backup.ps1` diário.
+
 ## Backup e portabilidade
 
 - **Tela Dados** (`/dados/`): exportar tudo em JSON, movimentações em CSV e importar um JSON com

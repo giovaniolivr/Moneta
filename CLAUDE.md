@@ -20,6 +20,10 @@ Mobile/PWA também fica para essa etapa ("usar o app em si").
 6. Entrega 30 (coletor do Mercado Livre, API oficial com OAuth): criar o app no portal de
    desenvolvedores do ML com o usuário, credenciais no `.env`, validar contra a API real.
 Polimentos (inclusive a entrega 33) ficam para quando a base do projeto estiver pronta.
+**Polimento pedido pelo usuário (prioridade logo após a configuração):** efeitos de hover em
+ícones e painéis (cards, linhas de lista, botões) — destaque visível + uma animação sutil a mais,
+"bem bonito". Respeitar `prefers-reduced-motion`, foco por teclado com o mesmo efeito do hover,
+tokens de cor e a regra do menu lateral (expandir não muda o layout).
 
 ## Documentos de referência
 - `docs/ARQUITETURA.md` — stack, camadas, modelagem, roadmap, decisões. Fonte da verdade técnica.

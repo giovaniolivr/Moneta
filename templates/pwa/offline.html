@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Sem conexão{% endblock %}
+
+{% block body %}
+<main class="auth">
+  <div class="auth-card card stack">
+    <p class="stat-label">Sem conexão</p>
+    <h1>O Moneta não respondeu</h1>
+    <p class="muted">O computador que serve o Moneta está desligado, dormindo ou fora da rede (Tailscale). Ligue-o e tente de novo.</p>
+    <div><a class="btn btn-primary" href="/">Tentar de novo</a></div>
+  </div>
+</main>
+{% endblock %}

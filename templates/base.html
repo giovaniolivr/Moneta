@@ -19,6 +19,10 @@
     </script>
     <link rel="preload" href="{% static 'fonts/inter-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link rel="icon" href="{% static 'favicon.svg' %}" type="image/svg+xml">
+    <link rel="manifest" href="{% url 'manifest' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+    <meta name="theme-color" content="#0a0a0a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
     <script src="{% static 'js/ui.js' %}" defer></script>
     {% block head %}{% endblock %}

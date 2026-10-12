@@ -3,7 +3,7 @@
 import pytest
 from django.urls import URLPattern, URLResolver, get_resolver, reverse
 
-PUBLIC_URL_NAMES = {"login"}
+PUBLIC_URL_NAMES = {"login", "manifest", "service_worker", "offline"}
 
 
 def _named_routes(patterns: list[URLPattern | URLResolver], ns: str = "") -> list[str]:

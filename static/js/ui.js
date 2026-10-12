@@ -35,3 +35,10 @@
     }
   });
 })();
+
+// App instalável (PWA): só em contexto seguro (HTTPS via Tailscale ou localhost).
+(() => {
+  if ("serviceWorker" in navigator && window.isSecureContext) {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }
+})();

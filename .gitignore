@@ -24,3 +24,7 @@ media/
 .idea/
 Thumbs.db
 .DS_Store
+
+# Logs do uso real (perfil personal)
+*.log
+*.log.*
