@@ -1120,6 +1120,11 @@
     color: var(--color-muted);
   }
 
+  .alert-recommendation svg {
+    flex: none;
+    color: var(--color-income);
+  }
+
   .badge-best {
     display: inline-flex;
     align-items: center;

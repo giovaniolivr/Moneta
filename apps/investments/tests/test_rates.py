@@ -169,3 +169,16 @@ def test_queries_a_date_window_ending_today() -> None:
         "https://api.bcb.gov.br/dados/serie/bcdata.sgs.4389/dados"
         "?formato=json&dataInicial=15/08/2026&dataFinal=14/10/2026"
     ]
+
+
+@pytest.mark.django_db
+def test_index_explains_how_to_start(client: Client, user: Any) -> None:
+    client.force_login(user)
+    assert (
+        "Ainda não há taxas de mercado" in client.get(reverse("investments:index")).content.decode()
+    )
+    set_rate_override(user, Series.CDI, Decimal("13.65"))
+    assert (
+        "Ainda não há taxas de mercado"
+        not in client.get(reverse("investments:index")).content.decode()
+    )

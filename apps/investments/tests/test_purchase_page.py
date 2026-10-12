@@ -65,7 +65,7 @@ def test_page_recommends_with_evidence(client: Client, user: Any) -> None:
     ).content.decode()
     assert "10x sem juros é a opção que menos pesa" in html
     assert "o dinheiro continua rendendo (Caixinha (100% do CDI))" in html
-    assert "embute juros de" in html
+    assert "12x de R$\xa0290,00" in html  # juros dessa oferta: na tabela
     assert html.count("badge-best") == 1
     assert "à vista sem desconto custa exatamente o preço" in html
 

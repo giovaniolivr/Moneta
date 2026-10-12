@@ -61,7 +61,7 @@
   {% if analysis %}{% with c=analysis.comparison %}
     <section class="card stack" aria-labelledby="purchase-result-title">
       <h2 id="purchase-result-title">Recomendação</h2>
-      <div class="alert alert-success" role="status">{% icon "circle-check" "icon-sm" %}<span class="alert-text">{{ analysis.explanation }}</span></div>
+      <div class="alert alert-recommendation" role="status">{% icon "circle-check" "icon-sm" %}<span class="alert-text">{{ analysis.explanation }}</span></div>
       <div class="table-scroll">
         <table class="data-table">
           <thead><tr><th scope="col">Forma de pagar</th><th scope="col">Total pago</th><th scope="col">Maior desembolso num mês</th><th scope="col">Meses</th><th scope="col">Custo real (hoje)</th><th scope="col">A mais que a melhor</th><th scope="col">Juros embutidos</th></tr></thead>

@@ -469,7 +469,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 25 ✅ | Simulador de investimento: valor inicial + aportes + prazo, produtos lado a lado | bruto, IOF, IR, líquido, gráfico + tabela |
 | 26 ✅ | Estratégias de compra (1): à vista com desconto × parcelado sem/com juros (dinheiro rendendo até cada parcela) × entrada + parcelas | custo real na mesma data-base + impacto mensal |
 | 27 ✅ | Estratégias de compra (2): juntar e comprar depois × comprar agora; quanto guardar por mês; recomendação com evidência e ligação com metas/projeção | escolhe a que menos pesa no bolso |
-| 28 | Polimento da Fase 3 | |
+| 28 ✅ | Polimento da Fase 3 | atalhos, recomendação mais legível, orientação sem taxas |
 
 ## 11. Preparação para os módulos futuros
 

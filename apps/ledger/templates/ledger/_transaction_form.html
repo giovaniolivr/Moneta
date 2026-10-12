@@ -20,7 +20,7 @@
     <div class="field installments-field" data-only="expense">
       <label for="{{ form.installments.id_for_label }}">{{ form.installments.label }}</label>
       {{ form.installments }}
-      <p class="field-help">Parcelado: informe o valor <strong>total</strong>. Cada parcela conta no seu mês; as futuras ficam previstas.</p>
+      <p class="field-help">Parcelado: informe o valor <strong>total</strong>. Cada parcela conta no seu mês; as futuras ficam previstas. Na dúvida entre à vista e parcelado, <a href="{% url 'investments:purchase' %}">compare antes</a>.</p>
       {% for error in form.installments.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
     </div>
   {% endif %}

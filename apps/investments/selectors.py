@@ -258,11 +258,16 @@ def explain(comparison: Comparison, money_where: str) -> str:
     else:
         reason = "considerando o rendimento do dinheiro até cada pagamento"
     text += f" — {reason}."
+    # Os juros de cada oferta estão na tabela; aqui só o caso que surpreende: o "sem juros"
+    # que embute juros por causa do desconto à vista.
     for r in comparison.results:
-        if r.implied_rate is None:
+        if r.implied_rate is None or r.strategy.key != "sem-juros":
             continue
         monthly = format_pct((r.implied_rate * Decimal(100)).quantize(Decimal("0.01")))
-        text += f" {r.strategy.label} embute juros de {monthly} ao mês sobre o preço à vista."
+        text += (
+            f" Atenção: com o desconto à vista, o {r.strategy.label} embute juros de "
+            f"{monthly} ao mês."
+        )
     return text
 
 

@@ -50,6 +50,7 @@ def index(request: AuthenticatedHttpRequest) -> HttpResponse:
                 for rate in rates.values()
             ],
             "products": product_rows(request.user, today),
+            "no_rates": all(r.annual_percent is None for r in rates.values()),
             "presets": PRESETS,
         },
     )

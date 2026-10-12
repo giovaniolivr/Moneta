@@ -15,6 +15,10 @@
   </div>
 </div>
 
+{% if no_rates %}
+  <div class="alert mb-4" role="status">{% icon "info" "icon-sm" %}<span class="alert-text">Ainda não há taxas de mercado. Clique em “Atualizar do Banco Central” (ou informe seus valores) para estimar rendimentos e usar o simulador.</span></div>
+{% endif %}
+
 <section class="card" aria-labelledby="rates-title">
   <div class="card-header">
     <h2 id="rates-title">Taxas de mercado</h2>

@@ -68,7 +68,7 @@ pytest · ruff · mypy (strict)
 - [x] 25. Simulador de investimento: valor inicial + aportes + prazo, produtos lado a lado (bruto, IOF, IR por aporte, líquido, em dinheiro de hoje), gráfico e link compartilhável
 - [x] 26. Estratégias de compra: à vista com desconto × parcelado sem/com juros × entrada + parcelas, com o dinheiro rendendo até cada pagamento, custo real em dinheiro de hoje e juros embutidos
 - [x] 27. Estratégias de compra: juntar e comprar depois (quando e quanto economiza), quanto guardar por mês até uma data, "cabe no bolso?" contra sua capacidade e saldo, e meta pré-preenchida
-- [ ] 28. Polimento da Fase 3
+- [x] 28. Polimento: atalhos para as estratégias de compra (dashboard e compra parcelada), recomendação mais legível, orientação quando ainda não há taxas
 
 **Próximas fases:** pesquisa de preços → assistente com IA.
 

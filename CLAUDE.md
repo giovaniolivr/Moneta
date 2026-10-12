@@ -4,7 +4,7 @@ Plataforma de gestão e planejamento financeiro pessoal. Uso próprio no início
 virar multiusuário e ganhar clientes web/mobile. Idioma do produto e da documentação: pt-BR.
 Código (identificadores) em inglês.
 
-**Status:** Fases 1 e 2 (entregas 0–20) concluídas; PWA/mobile adiado para a etapa de uso real. Seguir o roadmap da §10 de
+**Status:** Fases 1, 2 e 3 (entregas 0–28) concluídas; PWA/mobile adiado para a etapa de uso real. Seguir o roadmap da §10 de
 `docs/ARQUITETURA.md`, uma entrega por vez.
 
 ## Pendência: configurar o uso real (fazer junto com o usuário, quando ele pedir)
