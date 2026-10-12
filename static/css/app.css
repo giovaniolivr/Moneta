@@ -367,16 +367,12 @@
       color: var(--color-ink);
     }
 
-    .sidebar-actions {
-      display: flex;
-      align-items: center;
-    }
 
     .sidebar-footer {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: var(--space-2);
+      padding-left: 4px;
       margin-top: auto;
       padding-top: var(--space-4);
       border-top: 1px solid var(--color-hairline);
@@ -395,58 +391,80 @@
       gap: var(--space-2);
     }
 
-    /* Menu compacto: coluna de 72px só com ícones. Ao passar o mouse (ou navegar pelo
-       teclado), ele se expande POR CIMA do conteúdo, sem deslocar a página. */
+    /* Menu compacto (72px) que se expande POR CIMA do conteúdo ao passar o mouse ou com foco
+       de teclado. Para a animação ser fluida, o layout interno NUNCA muda: o menu está sempre
+       montado com 256px e os ícones caem exatamente na coluna de 72px. Expandir é só abrir um
+       recorte (clip-path, sem recalcular layout) e esmaecer os textos. */
     :root {
       --sidebar-width: 72px;
+      --sidebar-open-width: 256px;
+    }
 
-      .main {
-        grid-column: 2;
-      }
+    .main {
+      grid-column: 2;
+    }
 
-      .sidebar {
-        position: fixed;
-        inset: 0 auto 0 0;
-        z-index: 30;
-        width: 72px;
-        overflow: hidden;
-        background: var(--color-canvas);
-        transition: width 160ms ease;
-      }
+    /* Divisória da coluna compacta (a do menu aberto é a própria borda do menu). */
+    .app::before {
+      content: "";
+      position: fixed;
+      inset: 0 auto 0 var(--sidebar-width);
+      z-index: 29;
+      width: 1px;
+      background: var(--color-hairline);
+    }
 
-      .sidebar:hover,
-      .sidebar:has(:focus-visible) {
-        width: 256px;
-        transition-delay: 120ms;
-      }
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 30;
+      width: var(--sidebar-open-width);
+      padding-inline: var(--space-3);
+      background: var(--color-canvas);
+      clip-path: inset(0 calc(var(--sidebar-open-width) - var(--sidebar-width)) 0 0);
+      transition: clip-path 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
 
-      .sidebar:not(:hover):not(:has(:focus-visible)) {
-        align-items: center;
-        padding-inline: var(--space-3);
+    .sidebar:hover,
+    .sidebar:has(:focus-visible) {
+      clip-path: inset(0 0 0 0);
+      transition-delay: 80ms;
+    }
 
-        .nav-label {
-          display: none;
-        }
+    .sidebar .nav-label,
+    .sidebar .badge {
+      opacity: 0;
+      transition: opacity 120ms ease;
+    }
 
-        .sidebar-top {
-          flex-direction: column;
-        }
+    .sidebar:hover :is(.nav-label, .badge),
+    .sidebar:has(:focus-visible) :is(.nav-label, .badge) {
+      opacity: 1;
+      transition-delay: 120ms;
+    }
 
-        .sidebar-cta {
-          width: 44px;
-        }
+    /* Geometria: o centro de cada ícone fica em x = 36px (meio da coluna de 72px). Recolhidos,
+       botão e itens têm 48px (centrados na coluna) e crescem junto com a abertura; a largura
+       deles não afeta os vizinhos nem quebra o texto (nowrap + overflow). */
+    .sidebar .brand {
+      padding-left: 10px;
+    }
 
-        .sidebar-nav a {
-          justify-content: center;
-          width: 44px;
-          padding: 0;
-        }
+    .sidebar-cta,
+    .sidebar-nav a {
+      width: 48px;
+      overflow: hidden;
+      transition: width 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
 
-        .sidebar-footer,
-        .sidebar-actions {
-          flex-direction: column;
-        }
-      }
+    .sidebar-nav a {
+      padding-left: 14px;
+    }
+
+    .sidebar:hover :is(.sidebar-cta, .sidebar-nav a),
+    .sidebar:has(:focus-visible) :is(.sidebar-cta, .sidebar-nav a) {
+      width: 100%;
+      transition-delay: 80ms;
     }
   }
 }
@@ -1176,14 +1194,20 @@
 
   /* Menu recolhido (desktop): fica nesta camada para vencer as regras base de .badge/.btn. */
   @media (min-width: 1024px) {
-    .sidebar:not(:hover):not(:has(:focus-visible)) {
-      .badge {
-        display: none;
-      }
+    .sidebar-cta {
+      justify-content: flex-start;
+      white-space: nowrap;
+    }
 
-      .sidebar-cta {
-        padding: 0;
-      }
+    .sidebar .badge-demo {
+      margin-left: 8px;
+    }
+
+    .sidebar-user {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 

@@ -63,6 +63,9 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
 - Lote: `create_transactions()` é tudo-ou-nada e reporta erros de todas as linhas (`BatchError`);
   formset com prefixo `linhas` (máx. 100) + cabeçalho `lote`; JS em `static/js/batch.js`.
 - Menu lateral (desktop) é sempre compacto e expande por hover/foco — não há botão de recolher.
+  A animação NÃO pode mudar o layout interno: o menu é montado com 256px, ícones centrados em
+  x = 36px, e expandir = abrir `clip-path` + esmaecer textos (+ largura de botão/itens, que não
+  afeta vizinhos). Mudanças ali devem manter as posições dos ícones idênticas nos dois estados.
 - `[hidden]` tem `display: none !important` no CSS base: use o atributo para esconder elementos.
 - Views tipam `request: AuthenticatedHttpRequest` (`apps/core/http.py`); objetos por id sempre via
   `get_object_or_404(<selector escopado>(request.user), pk=pk)` → 404 para dados de outro usuário.

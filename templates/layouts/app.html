@@ -15,7 +15,7 @@
     </div>
 
     {% if new_transaction_url %}
-      <a class="btn btn-primary btn-block sidebar-cta" href="{{ new_transaction_url }}" data-drawer title="Nova movimentação" aria-label="Nova movimentação">{% icon "plus" "icon-sm" %}<span class="nav-label">Nova movimentação</span></a>
+      <a class="btn btn-primary sidebar-cta" href="{{ new_transaction_url }}" data-drawer title="Nova movimentação" aria-label="Nova movimentação">{% icon "plus" "icon-sm" %}<span class="nav-label">Nova movimentação</span></a>
     {% endif %}
 
     <nav class="sidebar-nav">
@@ -32,18 +32,16 @@
       <span class="badge badge-demo" title="Banco de demonstração (manage.py seed_demo)">{% icon "database" "icon-sm" %}<span class="nav-label">Dados fictícios</span></span>
     {% endif %}
     <div class="sidebar-footer">
-      <span class="nav-label" title="{{ user.get_username }}">{{ user.get_short_name|default:user.get_username }}</span>
-      <span class="sidebar-actions">
-        <button class="btn btn-ghost btn-icon theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema claro/escuro">
-          {% icon "sun" "icon-sun" %}{% icon "moon" "icon-moon" %}
-        </button>
-        {% if not dev_auto_login %}
-        <form class="inline" method="post" action="{% url 'logout' %}">
+      <button class="btn btn-ghost btn-icon theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema claro/escuro" title="Alternar tema">
+        {% icon "sun" "icon-sun" %}{% icon "moon" "icon-moon" %}
+      </button>
+      <span class="nav-label sidebar-user" title="{{ user.get_username }}">{{ user.get_short_name|default:user.get_username }}</span>
+      {% if not dev_auto_login %}
+        <form class="inline nav-label" method="post" action="{% url 'logout' %}">
           {% csrf_token %}
-          <button class="btn btn-ghost btn-icon" type="submit" aria-label="Sair">{% icon "log-out" %}</button>
+          <button class="btn btn-ghost btn-icon" type="submit" aria-label="Sair" title="Sair">{% icon "log-out" %}</button>
         </form>
-        {% endif %}
-      </span>
+      {% endif %}
     </div>
   </aside>
 
