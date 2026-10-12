@@ -120,6 +120,11 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
   `rates` (`Yield.factor(start, end)`: CDI %, prefixado 252, poupança por aniversário), `taxes`
   (IOF/IR regressivos por aporte), `portfolio` (lotes + resgate PEPS). Decimal por dentro,
   centavos (`int`) nas saídas. Taxas de produto nunca cravadas no código: são configuração.
+- Taxas: `MarketRate` é dado público (sem `owner`); `RateOverride` é do usuário e tem prioridade
+  (`investments.selectors.effective_rates`). Busca só sob demanda em `investments/market.py` (SGS:
+  CDI 4389, Selic meta 432, IPCA 12m 13522), por intervalo de datas até hoje, só HTTPS para
+  api.bcb.gov.br; testes nunca acessam a rede (`fetch=` injetável). Mensagens de
+  `violation_error_message` com "%" precisam de "%%".
 - Exclusão de movimentação é desfazível: `transaction_snapshot()` vai para a sessão e a mensagem
   ganha o botão "Desfazer" (`done(..., extra_tags="undo")` → `ledger:transaction_restore`).
 - Dashboard: `?mes=AAAA-MM` escolhe um mês (navegação ◂ ▸, nunca futuro); usuário sem nenhuma

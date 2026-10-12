@@ -26,6 +26,7 @@ _ITEMS = (
     ("Categorias", "tags", "taxonomy:index"),
     ("Contas", "landmark", "ledger:account_list"),
     ("Planejamento", "calendar", "planning:index"),
+    ("Investimentos", "trending-up", "investments:index"),
     ("Dados", "database", "portability:index"),
 )
 

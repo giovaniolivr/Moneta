@@ -1120,6 +1120,23 @@
     color: var(--color-muted);
   }
 
+  .inline-form {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .input-sm {
+    width: 7rem;
+    min-height: 0;
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .rates-table th,
+  .rates-table td {
+    vertical-align: middle;
+  }
+
   .planning-grid {
     display: grid;
     gap: var(--space-5);

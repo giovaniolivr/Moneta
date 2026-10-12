@@ -1,0 +1,46 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+
+{% block title %}Investimentos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Investimentos</h1>
+    <p>Taxas de mercado usadas nas estimativas de rendimento e nas simulações.</p>
+  </div>
+</div>
+
+<section class="card" aria-labelledby="rates-title">
+  <div class="card-header">
+    <h2 id="rates-title">Taxas de mercado</h2>
+    <form method="post" action="{% url 'investments:rates_update' %}">
+      {% csrf_token %}<button class="btn btn-secondary btn-sm" type="submit">Atualizar do Banco Central</button>
+    </form>
+  </div>
+  <div class="table-scroll">
+    <table class="data-table rates-table">
+      <thead><tr><th scope="col">Série</th><th scope="col">Em uso</th><th scope="col">Origem</th><th scope="col">Seu valor (% a.a.)</th></tr></thead>
+      <tbody>
+        {% for row in rates %}
+          <tr>
+            <th scope="row">{{ row.rate.series.label }}</th>
+            <td>{% if row.rate.annual_percent is not None %}<strong>{{ row.rate.annual_percent|floatformat:2 }}%</strong>{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td>{{ row.rate.source }}{% if row.stale %} <span class="badge">desatualizada</span>{% endif %}</td>
+            <td>
+              <form class="inline-form" method="post" action="{% url 'investments:rate_override' %}">
+                {% csrf_token %}
+                <input type="hidden" name="series" value="{{ row.rate.series.value }}">
+                <label class="sr-only" for="rate-{{ row.rate.series.value }}">Seu valor para {{ row.rate.series.label }}</label>
+                <input class="input input-sm" type="text" name="value" id="rate-{{ row.rate.series.value }}" value="{{ row.manual_text }}" inputmode="decimal" placeholder="ex.: 14,90">
+                <button class="btn btn-ghost btn-sm" type="submit">Salvar</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="text-sm muted mt-4">“Atualizar” busca CDI (anualizado, base 252), Selic meta e IPCA acumulado em 12 meses na API pública do Banco Central — é o único acesso à internet do Moneta e só acontece quando você pede. Um valor seu tem prioridade; deixe em branco e salve para voltar ao publicado.</p>
+</section>
+{% endblock %}

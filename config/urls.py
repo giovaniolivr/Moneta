@@ -13,5 +13,6 @@ urlpatterns = [
     path("", include("apps.portability.urls")),
     path("", include("apps.planning.urls")),
     path("", include("apps.goals.urls")),
+    path("", include("apps.investments.urls")),
     path("admin/", admin.site.urls),
 ]
