@@ -247,7 +247,18 @@ Ex.: `"  MERCADO "`, `"Mercado"`, `"mercado"` → `mercado`; `"Saúde"` → `sau
 Regras-chave (testadas):
 - Transferências **nunca** entram em receitas/despesas consolidadas.
 - Saldo da conta = abertura + receitas − despesas − transferências saindo + transferências entrando.
+  O saldo de abertura vale no **início** de `opening_date`; movimentações anteriores a essa data
+  ficam como histórico para análises e não alteram o saldo (permite lançar meses passados).
 - Resultado do período = receitas − despesas (ignora transferências).
+- Forma das transferências garantida **no banco** (CHECK): transferência ⇔ conta de destino e sem
+  categoria; destino ≠ origem; valor entre 1 centavo e `MAX_CENTS`.
+- Regras com objetos relacionados em `Transaction.clean()` (vale para services e admin): mesmo
+  dono em contas/categoria, tipo da categoria = tipo da movimentação, data não futura (projeções
+  são da fase 2).
+- Contas/categorias arquivadas não recebem movimentações novas; as antigas seguem editáveis.
+- Conta e categoria com histórico são protegidas contra exclusão (`PROTECT`): arquiva-se.
+- Entrada única `TransactionData` (dataclass) para criar/editar — reaproveitada por formulários,
+  importação, API e assistente.
 
 ### Dinheiro no código
 - Banco e domínio: **inteiros em centavos**. Nunca `float`.
@@ -386,7 +397,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 1 ✅ | `core.money` + filtros de template | testes de parse/format BRL |
 | 2 ✅ | Contas e categorias (models, seed padrão, admin) | seed cria categorias para um usuário novo |
 | 3 ✅ | Tags + normalização + aliases + merge | testes de normalização e merge |
-| 4 | Transaction + services (CRUD, validações, transferências) | regras da §4 testadas; merge de tags move as associações das movimentações |
+| 4 ✅ | Transaction + services (CRUD, validações, transferências) | regras da §4 testadas; merge de tags move as associações das movimentações |
 | 5 | Layout base + tokens do DESIGN.md (Tailwind) + componentes | tela vazia navegável no celular |
 | 6 | Formulário rápido de nova movimentação | registro em < 10 s no celular |
 | 7 | Lista de movimentações + `TransactionFilter` | filtros combináveis, edição, exclusão |

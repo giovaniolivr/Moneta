@@ -1,9 +1,11 @@
 import datetime
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
 from apps.core.models import NormalizedNameModel, OwnedModel
+from apps.core.money import MAX_CENTS, format_brl
 
 
 class AccountKind(models.TextChoices):
@@ -47,3 +49,143 @@ class Account(NormalizedNameModel, OwnedModel):
     @property
     def is_liability(self) -> bool:
         return self.kind == AccountKind.CREDIT_CARD
+
+
+class TransactionKind(models.TextChoices):
+    INCOME = "income", "Receita"
+    EXPENSE = "expense", "Despesa"
+    TRANSFER = "transfer", "Transferência"
+
+
+class PaymentMethod(models.TextChoices):
+    PIX = "pix", "Pix"
+    DEBIT = "debit", "Débito"
+    CREDIT = "credit", "Crédito"
+    CASH = "cash", "Dinheiro"
+    BOLETO = "boleto", "Boleto"
+    OTHER = "other", "Outro"
+
+
+class Transaction(OwnedModel):
+    """Movimentação financeira realizada.
+
+    `amount_cents` é sempre positivo; o efeito vem de `kind`:
+    - receita: entra em `account`;
+    - despesa: sai de `account`;
+    - transferência: sai de `account` e entra em `destination_account`. Nunca é receita nem
+      despesa nas análises consolidadas (ex.: aplicar na Caixinha, pagar a fatura do cartão).
+    """
+
+    kind = models.CharField("tipo", max_length=10, choices=TransactionKind.choices)
+    amount_cents = models.BigIntegerField("valor (centavos)")
+    date = models.DateField("data")
+    account = models.ForeignKey(
+        Account, on_delete=models.PROTECT, related_name="transactions", verbose_name="conta"
+    )
+    destination_account = models.ForeignKey(
+        Account,
+        on_delete=models.PROTECT,
+        related_name="incoming_transfers",
+        null=True,
+        blank=True,
+        verbose_name="conta de destino",
+    )
+    category = models.ForeignKey(
+        "taxonomy.Category",
+        on_delete=models.PROTECT,
+        related_name="transactions",
+        null=True,
+        blank=True,
+        verbose_name="categoria",
+    )
+    tags = models.ManyToManyField(
+        "taxonomy.Tag", related_name="transactions", blank=True, verbose_name="tags"
+    )
+    payment_method = models.CharField(
+        "forma de pagamento", max_length=10, choices=PaymentMethod.choices, blank=True
+    )
+    description = models.CharField("descrição", max_length=140, blank=True)
+    notes = models.TextField("observações", blank=True)
+
+    class Meta:
+        verbose_name = "movimentação"
+        verbose_name_plural = "movimentações"
+        ordering = ["-date", "-created_at"]
+        indexes = [
+            models.Index(fields=["owner", "date"]),
+            models.Index(fields=["owner", "kind", "date"]),
+            models.Index(fields=["owner", "category", "date"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount_cents__gt=0, amount_cents__lte=MAX_CENTS),
+                name="transaction_amount_positive",
+                violation_error_message="O valor deve ser maior que zero.",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(kind__in=TransactionKind.values),
+                name="transaction_kind_valid",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        kind=TransactionKind.TRANSFER,
+                        destination_account__isnull=False,
+                        category__isnull=True,
+                    )
+                    | (
+                        ~models.Q(kind=TransactionKind.TRANSFER)
+                        & models.Q(destination_account__isnull=True, category__isnull=False)
+                    )
+                ),
+                name="transaction_transfer_shape",
+                violation_error_message=(
+                    "Transferências exigem conta de destino e não têm categoria; "
+                    "receitas e despesas exigem categoria e não têm conta de destino."
+                ),
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(account=models.F("destination_account")),
+                name="transaction_transfer_distinct_accounts",
+                violation_error_message="A conta de destino deve ser diferente da de origem.",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_kind_display()} {format_brl(self.amount_cents)} em {self.date:%d/%m/%Y}"
+
+    def clean(self) -> None:
+        """Regras que envolvem objetos relacionados (o banco não consegue checar)."""
+        errors: dict[str, str] = {}
+        account = self.account if self.account_id else None
+        destination = self.destination_account if self.destination_account_id else None
+        category = self.category if self.category_id else None
+
+        if account is not None and account.owner_id != self.owner_id:
+            errors["account"] = "Conta inválida."
+        if destination is not None and destination.owner_id != self.owner_id:
+            errors["destination_account"] = "Conta de destino inválida."
+        if category is not None and category.owner_id != self.owner_id:
+            errors["category"] = "Categoria inválida."
+
+        if self.kind == TransactionKind.TRANSFER:
+            if destination is None:
+                errors["destination_account"] = "Informe a conta de destino."
+            elif destination.pk == self.account_id:
+                errors["destination_account"] = "Escolha uma conta diferente da de origem."
+            if category is not None:
+                errors["category"] = "Transferências não têm categoria."
+        else:
+            if destination is not None:
+                errors["destination_account"] = "Só transferências têm conta de destino."
+            if category is None:
+                errors["category"] = "Escolha uma categoria."
+            elif "category" not in errors and category.kind != self.kind:
+                kind_label = category.get_kind_display().lower()
+                errors["category"] = f"A categoria “{category}” é de {kind_label}."
+
+        if self.date and self.date > timezone.localdate():
+            errors["date"] = "Movimentações futuras chegam com o planejamento (fase 2)."
+
+        if errors:
+            raise ValidationError(errors)

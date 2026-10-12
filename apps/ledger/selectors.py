@@ -1,7 +1,11 @@
-from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
-from django.db.models import QuerySet
+import datetime
+import uuid
 
-from .models import Account
+from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
+from django.db.models import BigIntegerField, Case, F, QuerySet, Sum, Value, When
+from django.utils import timezone
+
+from .models import Account, Transaction, TransactionKind
 
 
 def list_accounts(
@@ -11,3 +15,55 @@ def list_accounts(
     if not include_archived:
         qs = qs.filter(is_archived=False)
     return qs
+
+
+def list_transactions(user: AbstractBaseUser | AnonymousUser) -> QuerySet[Transaction]:
+    return (
+        Transaction.objects.for_user(user)
+        .select_related("account", "destination_account", "category")
+        .prefetch_related("tags")
+    )
+
+
+def account_balances(
+    user: AbstractBaseUser | AnonymousUser, *, on: datetime.date | None = None
+) -> dict[uuid.UUID, int]:
+    """Saldo de cada conta (centavos) ao fim do dia `on` (padrão: hoje).
+
+    `opening_balance_cents` é o saldo no início de `opening_date`; só movimentações a partir
+    dessa data alteram o saldo. Lançamentos anteriores ficam como histórico para as análises.
+    Cartão de crédito: saldo negativo = valor devido.
+    """
+    on = on or timezone.localdate()
+    balances = {
+        pk: opening
+        for pk, opening in Account.objects.for_user(user).values_list("pk", "opening_balance_cents")
+    }
+    txs = Transaction.objects.for_user(user).filter(date__lte=on).order_by()
+
+    outgoing_or_own = (
+        txs.filter(date__gte=F("account__opening_date"))
+        .values("account_id")
+        .annotate(
+            delta=Sum(
+                Case(
+                    When(kind=TransactionKind.INCOME, then=F("amount_cents")),
+                    default=F("amount_cents") * Value(-1),
+                    output_field=BigIntegerField(),
+                )
+            )
+        )
+    )
+    incoming_transfers = (
+        txs.filter(
+            kind=TransactionKind.TRANSFER,
+            date__gte=F("destination_account__opening_date"),
+        )
+        .values("destination_account_id")
+        .annotate(delta=Sum("amount_cents"))
+    )
+    for own in outgoing_or_own:
+        balances[own["account_id"]] += own["delta"]
+    for incoming in incoming_transfers:
+        balances[incoming["destination_account_id"]] += incoming["delta"]
+    return balances

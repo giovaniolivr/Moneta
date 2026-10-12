@@ -21,7 +21,7 @@ pytest · ruff · mypy (strict)
 - [x] 1. Valores monetários (centavos ↔ R$): parser tolerante, formatação BRL, campo de formulário
 - [x] 2. Contas e categorias (padrões criados por usuário, nomes únicos sem caixa/acentos)
 - [x] 3. Tags com normalização, apelidos, mesclagem explícita e busca para autocomplete
-- [ ] 4. Movimentações (receitas, despesas, transferências)
+- [x] 4. Movimentações (receitas, despesas, transferências) com regras garantidas no banco e saldo por conta
 - [ ] 5. Layout base e temas escuro/claro
 - [ ] 6. Registro rápido de movimentação
 - [ ] 7. Lista e filtros de movimentações

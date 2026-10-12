@@ -1,7 +1,7 @@
 """Modelos base compartilhados por todos os apps."""
 
 import uuid
-from typing import Any, Self
+from typing import Any, Self, TypeVar
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
@@ -19,7 +19,11 @@ class TimeStampedModel(models.Model):
         abstract = True
 
 
-class OwnedQuerySet[M: models.Model](models.QuerySet[M]):
+_M = TypeVar("_M", bound=models.Model)
+
+
+# TypeVar em vez da sintaxe PEP 695: o plugin do django-stubs não resolve o manager com ela.
+class OwnedQuerySet(models.QuerySet[_M]):
     def for_user(self, user: AbstractBaseUser | AnonymousUser) -> Self:
         """Único ponto de leitura de dados do usuário: sempre escopa por dono."""
         if not user.is_authenticated:
