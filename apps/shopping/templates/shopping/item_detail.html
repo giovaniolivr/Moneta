@@ -1,0 +1,99 @@
+{% extends "layouts/app.html" %}
+{% load static ui money %}
+
+{% block title %}{{ item.name }}{% endblock %}
+
+{% block head %}
+{{ block.super }}
+<script src="{% static 'js/charts.js' %}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ item.name }}</h1>
+    <p>{% if item.target_cents %}Preço-alvo {{ item.target_cents|brl }}{% else %}Sem preço-alvo{% endif %}{% if item.is_done %} · resolvido{% endif %}</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'shopping:index' %}">Lista</a>
+    <a class="btn btn-ghost" href="{% url 'shopping:item_update' item.pk %}" data-drawer>Editar</a>
+    <a class="btn btn-primary" href="{% url 'shopping:observation_create' item.pk %}" data-drawer>{% icon "plus" "icon-sm" %}Registrar preço</a>
+  </div>
+</div>
+
+<div class="stack">
+  {% with s=summary %}
+    <div class="grid totals">
+      <div class="card">
+        <div class="stat-label">Melhor agora</div>
+        <div class="stat-value">{% if s.best_now %}{{ s.best_now.total_cents|brl }}{% else %}—{% endif %}</div>
+        <div class="stat-hint">{% if s.best_now %}{{ s.best_now.store }}, {{ s.best_now.day|date:"d/m" }}{% if s.best_now.shipping_cents %} · inclui {{ s.best_now.shipping_cents|brl }} de frete{% endif %}{% else %}sem preço nos últimos 30 dias{% endif %}</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Menor já visto</div>
+        <div class="stat-value">{% if s.lowest_ever %}{{ s.lowest_ever.total_cents|brl }}{% else %}—{% endif %}</div>
+        <div class="stat-hint">{% if s.lowest_ever %}{{ s.lowest_ever.store }}, {{ s.lowest_ever.day|date:"d/m/Y" }}{% endif %}</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Situação</div>
+        <div class="stat-value text-sm">
+          {% if s.below_target %}{% icon "circle-check" "icon-sm" %} Abaixo do alvo
+          {% elif s.is_lowest_ever %}{% icon "info" "icon-sm" %} No menor preço já visto
+          {% elif s.best_now %}Acompanhando{% else %}Registre um preço{% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if s.stores_now %}
+      <section class="card" aria-labelledby="stores-title">
+        <div class="card-header"><h2 id="stores-title">Preço em cada loja</h2><span class="text-sm muted">Último registro de cada loja, últimos 30 dias</span></div>
+        <ul class="compact-list">
+          {% for o in s.stores_now %}
+            <li><span>{{ o.store }} · {{ o.day|date:"d/m" }}</span><span>{{ o.total_cents|brl }}{% if o.shipping_cents %} <span class="muted">({{ o.price_cents|brl }} + {{ o.shipping_cents|brl }} frete)</span>{% endif %}</span></li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+  {% endwith %}
+
+  {% if chart %}
+    <section class="card chart-card" aria-labelledby="price-chart-title">
+      <div class="chart-header"><div><h2 id="price-chart-title">Melhor preço ao longo do tempo</h2><p class="chart-subtitle">Menor preço + frete entre as lojas, a cada registro</p></div></div>
+      <div class="chart" data-chart="lines" data-source="data-prices" data-label="Melhor preço ao longo do tempo"></div>
+    </section>
+    {{ chart|json_script:"data-prices" }}
+  {% endif %}
+
+  <section class="card" aria-labelledby="history-title">
+    <div class="card-header"><h2 id="history-title">Histórico</h2></div>
+    {% if observations %}
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th scope="col">Data</th><th scope="col">Loja</th><th scope="col">Preço</th><th scope="col">Frete</th><th scope="col">Total</th><th scope="col">Parcelas</th><th scope="col"><span class="sr-only">Ações</span></th></tr></thead>
+          <tbody>
+            {% for o in observations %}
+              <tr>
+                <th scope="row">{{ o.observed_on|date:"d/m/Y" }}</th>
+                <td>{% if o.url %}<a href="{{ o.url }}" rel="noopener noreferrer" target="_blank">{{ o.store }}</a>{% else %}{{ o.store }}{% endif %}</td>
+                <td>{{ o.price_cents|brl }}</td>
+                <td>{% if o.shipping_cents %}{{ o.shipping_cents|brl }}{% else %}grátis{% endif %}</td>
+                <td><strong>{{ o.total_cents|brl }}</strong></td>
+                <td>{% if o.installments %}{{ o.installments }}x sem juros{% else %}—{% endif %}</td>
+                <td>
+                  <form method="post" action="{% url 'shopping:observation_delete' o.pk %}">
+                    {% csrf_token %}<button class="btn btn-ghost btn-sm" type="submit" aria-label="Excluir registro de {{ o.store }} em {{ o.observed_on|date:'d/m' }}">{% icon "trash-2" "icon-sm" %}</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-state text-sm">Nenhum preço ainda. Use “Registrar preço” e cole o link do produto.</p>
+    {% endif %}
+  </section>
+
+  {% if item.notes %}<section class="card"><h2>Observações</h2><p class="text-sm">{{ item.notes|linebreaksbr }}</p></section>{% endif %}
+</div>
+{% endblock %}

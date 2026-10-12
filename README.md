@@ -70,7 +70,15 @@ pytest · ruff · mypy (strict)
 - [x] 27. Estratégias de compra: juntar e comprar depois (quando e quanto economiza), quanto guardar por mês até uma data, "cabe no bolso?" contra sua capacidade e saldo, e meta pré-preenchida
 - [x] 28. Polimento: atalhos para as estratégias de compra (dashboard e compra parcelada), recomendação mais legível, orientação quando ainda não há taxas
 
-**Próximas fases:** pesquisa de preços → assistente com IA.
+**Fase 4 — pesquisa de preços**
+
+- [x] 29. Lista de desejos: preço-alvo, registro rápido (cole o link, a loja é reconhecida), melhor preço agora com frete, menor já visto, histórico e gráfico
+- [ ] 30. Coletor do Mercado Livre (API oficial, sob demanda)
+- [ ] 31. Alertas de preço na dashboard
+- [ ] 32. Da lista para as estratégias de compra e metas
+- [ ] 33. Polimento da Fase 4
+
+**Próxima fase:** assistente com IA.
 
 ## Rodando localmente
 

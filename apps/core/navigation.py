@@ -27,6 +27,7 @@ _ITEMS = (
     ("Contas", "landmark", "ledger:account_list"),
     ("Planejamento", "calendar", "planning:index"),
     ("Investimentos", "trending-up", "investments:index"),
+    ("Lista de desejos", "shopping-bag", "shopping:index"),
     ("Dados", "database", "portability:index"),
 )
 

@@ -1,0 +1,56 @@
+{% extends "layouts/app.html" %}
+{% load ui money %}
+
+{% block title %}Lista de desejos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Lista de desejos</h1>
+    <p>Acompanhe o preço do que você quer comprar, em todas as lojas, e compre na hora certa.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'shopping:item_create' %}" data-drawer>{% icon "plus" "icon-sm" %}Novo item</a>
+</div>
+
+<section class="card" aria-labelledby="wish-title">
+  <h2 class="sr-only" id="wish-title">Itens</h2>
+  {% if active %}
+    <ul class="list">
+      {% for row in active %}{% with s=row.summary %}
+        <li>
+          <a class="list-item list-item-link" href="{% url 'shopping:item_detail' row.item.pk %}">
+            <span class="avatar-icon">{% icon "shopping-bag" %}</span>
+            <span class="list-item-main">
+              <span class="list-item-title">{{ row.item.name }}{% if s.below_target %} <span class="badge badge-best">{% icon "circle-check" "icon-sm" %}abaixo do alvo</span>{% endif %}</span>
+              <span class="list-item-meta">
+                {% if s.best_now %}melhor agora: {{ s.best_now.store }}{% if s.best_now.shipping_cents %} (com frete){% endif %} · {{ s.stores_now|length }} loja{{ s.stores_now|length|pluralize }}{% if s.lowest_ever %} · menor já visto {{ s.lowest_ever.total_cents|brl }}{% endif %}
+                {% elif s.lowest_ever %}sem preço nos últimos 30 dias · menor já visto {{ s.lowest_ever.total_cents|brl }}
+                {% else %}nenhum preço registrado ainda{% endif %}
+                {% if row.item.target_cents %} · alvo {{ row.item.target_cents|brl }}{% endif %}
+              </span>
+            </span>
+            <span class="amount amount-neutral">{% if s.best_now %}{{ s.best_now.total_cents|brl }}{% else %}—{% endif %}</span>
+          </a>
+        </li>
+      {% endwith %}{% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty-state">
+      {% icon "shopping-bag" %}
+      <p class="empty-state-title">Lista vazia</p>
+      <p class="text-sm">Adicione o que você quer comprar e registre os preços que encontrar — a loja é reconhecida pelo link.</p>
+    </div>
+  {% endif %}
+</section>
+
+{% if done_items %}
+  <details class="card mt-4">
+    <summary>Resolvidos ({{ done_items|length }})</summary>
+    <ul class="list">
+      {% for row in done_items %}
+        <li><a class="list-item list-item-link is-muted" href="{% url 'shopping:item_detail' row.item.pk %}"><span class="list-item-main"><span class="list-item-title">{{ row.item.name }}</span></span></a></li>
+      {% endfor %}
+    </ul>
+  </details>
+{% endif %}
+{% endblock %}

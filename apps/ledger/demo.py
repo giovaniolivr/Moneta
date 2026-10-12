@@ -366,6 +366,25 @@ def seed_demo(
     _seed_budgets(user, cat)
     _seed_card(user, cat, today=today, card=card, checking=checking)
     from apps.goals.services import create_goal
+    from apps.shopping.services import ObservationData, add_observation, create_item
+
+    headset = create_item(user, name="Headset sem fio", target_cents=45_000)
+    for days_ago, url, cents, shipping in [
+        (40, "https://www.kabum.com.br/produto/headset", 54_990, 0),
+        (20, "https://www.pichau.com.br/headset", 51_990, 2_490),
+        (12, "https://www.kabum.com.br/produto/headset", 49_990, 0),
+        (3, "https://www.terabyteshop.com.br/produto/headset", 47_990, 1_990),
+    ]:
+        add_observation(
+            headset,
+            ObservationData(
+                price_cents=cents,
+                url=url,
+                shipping_cents=shipping,
+                observed_on=today - datetime.timedelta(days=days_ago),
+            ),
+        )
+    create_item(user, name="Cadeira de escritório", target_cents=120_000)
     from apps.investments.services import ProductData, create_product
 
     caixinha = create_product(

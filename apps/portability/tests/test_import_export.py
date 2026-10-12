@@ -36,6 +36,8 @@ from apps.portability import schema
 from apps.portability.schema import InvalidFileError
 from apps.portability.selectors import export_payload
 from apps.portability.services import ImportFailedError, import_payload, parse_file
+from apps.shopping.models import WishItem
+from apps.shopping.services import ObservationData, add_observation, create_item
 from apps.taxonomy.models import Category, Tag, TagAlias
 from apps.taxonomy.services import add_tag_alias, get_or_create_tag, set_category_archived
 
@@ -120,6 +122,13 @@ def data(user: Any) -> dict[str, Any]:
     create_budget(user, category=cats["Alimentação"], amount_cents=150_000)
     create_budget(user, category=None, amount_cents=600_000)
     create_goal(user, name="Reserva", target_cents=2_000_000, account=savings)
+    mouse = create_item(user, name="Mouse sem fio", target_cents=15_000)
+    add_observation(
+        mouse,
+        ObservationData(
+            price_cents=18_990, url="https://www.kabum.com.br/produto/1", shipping_cents=1_500
+        ),
+    )
     set_category_archived(cats["Lazer"], archived=True)
     return {"checking": checking, "card": card, "savings": savings, "cats": cats}
 
@@ -135,6 +144,7 @@ def _wipe(user: Any) -> None:
     Budget.objects.for_user(user).delete()
     Goal.objects.for_user(user).delete()
     InvestmentProduct.objects.for_user(user).delete()
+    WishItem.objects.for_user(user).delete()
     TagAlias.objects.for_user(user).delete()
     Tag.objects.for_user(user).delete()
     Account.objects.for_user(user).delete()
@@ -154,6 +164,7 @@ def test_round_trip_preserves_everything(user: Any, data: Any) -> None:
     assert report.budgets.created == 2
     assert report.goals.created == 1
     assert report.products.created == 1
+    assert (report.wishlist.created, report.prices.created) == (1, 1)
     assert Account.objects.for_user(user).get(name="Caixinha").product is not None
     assert Transaction.objects.for_user(user).filter(installment_number=10).exists()
     assert report.transactions.created == len(before["transactions"])

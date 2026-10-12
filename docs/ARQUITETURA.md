@@ -458,6 +458,16 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 19 ✅ | Metas (`apps/goals`) sobre o saldo de uma conta | aporte mensal necessário vs. capacidade de poupança |
 | 20 ✅ | Dashboard realizado × previsto + gasto variável estimado na projeção | resumo só para quem usa planejamento |
 
+### Roadmap da Fase 4 — pesquisa de preços
+
+| # | Entrega | Pronto quando |
+|---|---------|---------------|
+| 29 ✅ | Lista de desejos (`apps/shopping`): itens, preço-alvo, registro manual rápido (loja pelo link), melhor preço agora, menor já visto, histórico e gráfico | sem raspar páginas |
+| 30 | Interface `PriceSource` + coletor do Mercado Livre (API oficial, OAuth do usuário), sob demanda | desligado sem credenciais; testes sem rede |
+| 31 | Alertas: abaixo do alvo / menor preço em N dias, na dashboard | com evidência |
+| 32 | Da lista para as Estratégias de compra (preço e parcelas preenchidos) e para uma meta | |
+| 33 | Polimento da Fase 4 | |
+
 ### Roadmap da Fase 3 — investimentos e estratégias de compra
 
 | # | Entrega | Pronto quando |
@@ -544,6 +554,13 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
     entram menos as que saem (rendimentos lançados não contam como aporte); o rendimento entra
     com juros compostos mensais, IR pela idade média do dinheiro (metade do prazo; sem prazo,
     17,5%). Tudo declarado como estimativa na tela.
+
+**Tomadas para a Fase 4 (2026-10-12)**
+21. Preços: registro manual + APIs **oficiais**; nada de raspar páginas (termos de uso, fragilidade).
+    Mercado Livre tem API (OAuth do usuário); Amazon PA-API foi descontinuada e a Creators API
+    exige afiliado com vendas recorrentes; KaBuM!/Pichau/Terabyte não têm API pública — manual.
+22. Alertas de preço só dentro do app (dashboard e lista), com evidência.
+23. "Melhor agora" = menor preço + frete entre o último registro de cada loja nos últimos 30 dias.
 
 **Adiadas**
 Deploy/hospedagem · Postgres · API · subcategorias · orçamentos · rate limit · tarefas em fundo ·

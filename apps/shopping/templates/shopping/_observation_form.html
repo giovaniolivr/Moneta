@@ -1,0 +1,29 @@
+{% load ui %}
+<form class="stack" method="post" action="{% url 'shopping:observation_create' item.pk %}" novalidate>
+  {% csrf_token %}
+  {% include "components/drawer_header.html" %}
+  {% if form.non_field_errors %}<div class="alert alert-error" role="alert">{% icon "circle-alert" "icon-sm" %}{{ form.non_field_errors|join:" " }}</div>{% endif %}
+  <div class="field">
+    <label for="{{ form.price.id_for_label }}">{{ form.price.label }}</label>
+    <div class="amount-wrap"><span class="amount-prefix" aria-hidden="true">R$</span>{{ form.price }}</div>
+    {% for error in form.price.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
+  <div class="field">
+    <label for="{{ form.url.id_for_label }}">{{ form.url.label }}</label>
+    {{ form.url }}
+    <p class="field-help">{{ form.url.help_text }}</p>
+    {% for error in form.url.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
+  <div class="form-row">
+    {% for field in form %}{% if field.name == "store" or field.name == "shipping" or field.name == "installments" or field.name == "observed_on" %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.name == "store" %} <span class="muted">(se não colar o link)</span>{% endif %}</label>
+        {{ field }}
+        {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+      </div>
+    {% endif %}{% endfor %}
+  </div>
+  <div class="form-actions form-actions-single">
+    <button class="btn btn-primary" type="submit">Registrar</button>
+  </div>
+</form>

@@ -28,6 +28,7 @@ from apps.goals.models import Goal
 from apps.investments.models import InvestmentProduct
 from apps.ledger.models import Account, Transaction
 from apps.planning.models import Budget, InstallmentPlan, Recurrence
+from apps.shopping.models import PriceObservation, WishItem
 from apps.taxonomy.models import Category, Tag
 from apps.taxonomy.services import add_tag_alias
 from apps.users.models import User
@@ -64,6 +65,8 @@ class ImportReport:
     budgets: Counts = field(default_factory=Counts)
     goals: Counts = field(default_factory=Counts)
     transactions: Counts = field(default_factory=Counts)
+    wishlist: Counts = field(default_factory=Counts)
+    prices: Counts = field(default_factory=Counts)
 
     def sections(self) -> list[tuple[str, Counts]]:
         return [
@@ -76,6 +79,8 @@ class ImportReport:
             ("Orçamentos", self.budgets),
             ("Metas", self.goals),
             ("Movimentações", self.transactions),
+            ("Lista de desejos", self.wishlist),
+            ("Preços observados", self.prices),
         ]
 
     @property
@@ -247,6 +252,7 @@ class _Importer:
         self.each(self.items(payload, "budgets", "Orçamento"), self.budget)
         self.each(self.items(payload, "goals", "Meta"), self.goal)
         self.each(self.items(payload, "transactions", "Movimentação"), self.movement)
+        self.each(self.items(payload, "wishlist", "Item desejado"), self.wish_item)
 
     def account(self, where: str, item: Item) -> None:
         file_id = self.uuid_field(item, "id", where)
@@ -476,6 +482,54 @@ class _Importer:
         for k, v in values.items():
             setattr(obj, k, v)
         self.save(obj, self.report.goals, created=created, changed=changed, where=where)
+
+    def wish_item(self, where: str, item: Item) -> None:
+        """Upsert pelo UUID (item e cada preço); os preços vêm dentro do item."""
+        pk = self.uuid_field(item, "id", where)
+        if self.owned_by_other(WishItem, pk):
+            raise self.error(where, "o identificador pertence a outro usuário deste servidor.")
+        values: Item = {
+            "name": self.field(item, "name", where, str),
+            "target_cents": self.field(item, "target_cents", where, int, default=None),
+            "notes": self.field(item, "notes", where, str, default=""),
+            "is_done": self.field(item, "is_done", where, bool, default=False),
+        }
+        obj = WishItem.objects.for_user(self.user).filter(pk=pk).first()
+        created = obj is None
+        if obj is None:
+            obj = WishItem(id=pk, owner=self.user)
+        changed = any(getattr(obj, k) != v for k, v in values.items())
+        for k, v in values.items():
+            setattr(obj, k, v)
+        self.save(obj, self.report.wishlist, created=created, changed=changed, where=where)
+        prices = self.field(item, "prices", where, list, default=[])
+        for index, price in enumerate(prices, start=1):
+            if not isinstance(price, dict):
+                raise self.error(where, f"preço {index} inválido.")
+            self.wish_price(f"{where}, preço {index}", obj, price)
+
+    def wish_price(self, where: str, wish: WishItem, item: Item) -> None:
+        pk = self.uuid_field(item, "id", where)
+        if self.owned_by_other(PriceObservation, pk):
+            raise self.error(where, "o identificador pertence a outro usuário deste servidor.")
+        values: Item = {
+            "item": wish,
+            "store": self.field(item, "store", where, str),
+            "url": self.field(item, "url", where, str, default=""),
+            "price_cents": self.field(item, "price_cents", where, int),
+            "shipping_cents": self.field(item, "shipping_cents", where, int, default=0),
+            "installments": self.field(item, "installments", where, int, default=None),
+            "observed_on": self.date_field(item, "observed_on", where),
+            "source": self.field(item, "source", where, str, default="manual"),
+        }
+        obj = PriceObservation.objects.for_user(self.user).filter(pk=pk).first()
+        created = obj is None
+        if obj is None:
+            obj = PriceObservation(id=pk, owner=self.user)
+        changed = created or any(getattr(obj, k) != v for k, v in values.items())
+        for k, v in values.items():
+            setattr(obj, k, v)
+        self.save(obj, self.report.prices, created=created, changed=changed, where=where)
 
     def optional_date(self, item: Item, key: str, where: str) -> datetime.date | None:
         return None if item.get(key) is None else self.date_field(item, key, where)

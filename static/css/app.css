@@ -266,8 +266,10 @@
     font-size: var(--text-sm);
   }
 
+  /* minmax(0, 1fr): conteúdo largo (tabelas, textos longos) não alarga a página no celular. */
   .stack {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-5);
   }
 
@@ -594,6 +596,7 @@
 
   .card-header {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
@@ -1180,8 +1183,14 @@
 
   .compact-list li {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
-    gap: var(--space-3);
+    gap: var(--space-1) var(--space-3);
+  }
+
+  .compact-list li > span:last-child {
+    margin-left: auto;
+    text-align: right;
   }
 
   .compact-list li > span:first-child {
@@ -1637,6 +1646,7 @@
 @layer components {
   .page-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-2);
   }
 

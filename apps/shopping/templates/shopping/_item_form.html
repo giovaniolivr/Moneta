@@ -1,0 +1,32 @@
+{% load ui %}
+<form class="stack" method="post" action="{% if item %}{% url 'shopping:item_update' item.pk %}{% else %}{% url 'shopping:item_create' %}{% endif %}" novalidate>
+  {% csrf_token %}
+  {% include "components/drawer_header.html" %}
+  {% if form.non_field_errors %}<div class="alert alert-error" role="alert">{% icon "circle-alert" "icon-sm" %}{{ form.non_field_errors|join:" " }}</div>{% endif %}
+  {% for field in form %}
+    <div class="field">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {% if field.name == "target" %}<div class="amount-wrap"><span class="amount-prefix" aria-hidden="true">R$</span>{{ field }}</div>{% else %}{{ field }}{% endif %}
+      {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+      {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+    </div>
+  {% endfor %}
+  <div class="form-actions form-actions-single">
+    <button class="btn btn-primary" type="submit">{% if item %}Salvar alterações{% else %}Adicionar à lista{% endif %}</button>
+  </div>
+</form>
+
+{% if item %}
+  <form class="stack-sm" method="post" action="{% url 'shopping:item_toggle_done' item.pk %}">
+    {% csrf_token %}
+    <button class="btn btn-ghost" type="submit">{% if item.is_done %}Voltar para a lista{% else %}Marcar como resolvido (comprei ou desisti){% endif %}</button>
+  </form>
+  <details class="danger-zone">
+    <summary>{% icon "trash-2" "icon-sm" %}Excluir item</summary>
+    <form method="post" action="{% url 'shopping:item_delete' item.pk %}">
+      {% csrf_token %}
+      <p class="text-sm">Apaga o item e todo o histórico de preços dele.</p>
+      <button class="btn btn-danger" type="submit">Confirmar exclusão</button>
+    </form>
+  </details>
+{% endif %}

@@ -141,6 +141,13 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
 - Sem o dinheiro: `purchase.months_to_save()` e `monthly_to_reach()` (busca binária sobre a
   simulação, IR/IOF reais); `selectors.pocket()`/`fits()` confrontam cada opção com a capacidade
   de poupança e o saldo. `goals:goal_create` aceita `?nome=&alvo=&prazo=` para pré-preencher.
+- Lista de desejos (`apps/shopping`): `WishItem` + `PriceObservation` (loja pelo domínio do link em
+  `shopping/domain/prices.store_from_url`; "melhor agora" = `summarize()`). Nunca raspar páginas de
+  lojas: só registro manual ou API oficial. Export no formato v9.
+- `.stack` e `.chart-card` são grids com `minmax(0, 1fr)`: sem isso conteúdo largo alarga a página
+  no celular. Ações de cabeçalho (`.page-actions`) e `.card-header` quebram linha.
+- Git Bash deste ambiente reduz barras invertidas duplas a uma só em heredocs: para texto com barra invertida, gere o arquivo
+  com a ferramenta de escrita (não via heredoc).
 - Exclusão de movimentação é desfazível: `transaction_snapshot()` vai para a sessão e a mensagem
   ganha o botão "Desfazer" (`done(..., extra_tags="undo")` → `ledger:transaction_restore`).
 - Dashboard: `?mes=AAAA-MM` escolhe um mês (navegação ◂ ▸, nunca futuro); usuário sem nenhuma

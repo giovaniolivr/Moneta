@@ -14,6 +14,7 @@ from apps.goals.models import Goal
 from apps.investments.models import InvestmentProduct
 from apps.ledger.models import Account, Transaction
 from apps.planning.models import Budget, InstallmentPlan, Recurrence
+from apps.shopping.models import WishItem
 from apps.taxonomy.models import Category, Tag
 
 from .schema import FORMAT, SCHEMA_VERSION, Payload
@@ -136,6 +137,31 @@ def export_payload(user: UserLike) -> Payload:
         }
         for g in Goal.objects.for_user(user).order_by("created_at", "pk")
     ]
+    wishlist = [
+        {
+            "id": str(item.pk),
+            "name": item.name,
+            "target_cents": item.target_cents,
+            "notes": item.notes,
+            "is_done": item.is_done,
+            "prices": [
+                {
+                    "id": str(o.pk),
+                    "store": o.store,
+                    "url": o.url,
+                    "price_cents": o.price_cents,
+                    "shipping_cents": o.shipping_cents,
+                    "installments": o.installments,
+                    "observed_on": o.observed_on.isoformat(),
+                    "source": o.source,
+                }
+                for o in sorted(item.observations.all(), key=lambda o: (o.observed_on, o.pk))
+            ],
+        }
+        for item in WishItem.objects.for_user(user)
+        .prefetch_related("observations")
+        .order_by("created_at", "pk")
+    ]
     transactions = [
         {
             "id": str(tx.pk),
@@ -164,6 +190,7 @@ def export_payload(user: UserLike) -> Payload:
         "budgets": budgets,
         "goals": goals,
         "transactions": transactions,
+        "wishlist": wishlist,
     }
 
 
