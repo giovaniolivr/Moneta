@@ -117,3 +117,54 @@ class SimulationForm(forms.Form):
         if not (data.get("inicial") or data.get("aporte")) and not self.errors:
             raise forms.ValidationError("Informe um valor inicial, um aporte mensal ou os dois.")
         return data
+
+
+NO_YIELD_KEY = "nenhum"
+
+
+class PurchaseForm(forms.Form):
+    """Ofertas recebidas para uma compra. Parâmetros em português na URL (link guardável)."""
+
+    valor = MoneyField(label="Preço cheio (sem desconto)")
+    produto = forms.ChoiceField(label="Onde o dinheiro está hoje")
+    desconto = forms.CharField(label="Desconto à vista (%)", required=False, max_length=8)
+    sj_parcelas = forms.IntegerField(
+        label="Sem juros: parcelas", required=False, min_value=2, max_value=48
+    )
+    sj_no_ato = forms.BooleanField(label="1ª parcela no ato", required=False)
+    cj_parcelas = forms.IntegerField(
+        label="Com juros: parcelas", required=False, min_value=2, max_value=72
+    )
+    cj_valor = MoneyField(label="Com juros: valor da parcela", required=False)
+    en_entrada = MoneyField(label="Entrada", required=False)
+    en_parcelas = forms.IntegerField(label="Parcelas", required=False, min_value=1, max_value=72)
+    en_valor = MoneyField(label="Valor da parcela", required=False)
+
+    def __init__(self, *args: Any, choices: list[tuple[str, str]], **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["produto"].choices = [  # type: ignore[attr-defined]
+            *choices,
+            (NO_YIELD_KEY, "Não está rendendo"),
+        ]
+        for name, field in self.fields.items():
+            if name != "sj_no_ato":
+                field.widget.attrs.setdefault("class", "input")
+
+    def clean_desconto(self) -> Decimal:
+        value = parse_percent(self.cleaned_data.get("desconto") or "") or Decimal(0)
+        if not 0 <= value < 100:
+            raise forms.ValidationError("Use um desconto entre 0 e 99%.")
+        return value
+
+    def clean(self) -> dict[str, Any]:
+        data = super().clean() or {}
+        pairs = [
+            ("cj_parcelas", "cj_valor", "Parcelado com juros"),
+            ("en_parcelas", "en_valor", "Entrada + parcelas"),
+        ]
+        for count, value, label in pairs:
+            if bool(data.get(count)) != bool(data.get(value)):
+                self.add_error(value, f"{label}: informe o número de parcelas e o valor.")
+        if data.get("en_entrada") and not data.get("en_parcelas"):
+            self.add_error("en_parcelas", "Entrada + parcelas: informe as parcelas.")
+        return data

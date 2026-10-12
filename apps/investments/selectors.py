@@ -1,12 +1,26 @@
 import datetime
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import Any
 
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.db.models import QuerySet
 
+from apps.analytics.domain.metrics import format_pct
+from apps.core.money import format_brl
+
 from .domain.products import Indexer, MissingRateError, ProductSpec, Taxation
+from .domain.purchase import (
+    Comparison,
+    Payment,
+    Strategy,
+    compare,
+    installments,
+    split_installments,
+)
+from .domain.rates import Prefixed, Yield
 from .domain.simulation import Simulation, simulate
+from .domain.taxes import EXEMPT
 from .models import InvestmentProduct, MarketRate, RateOverride, Series
 
 UserLike = AbstractBaseUser | AnonymousUser
@@ -145,3 +159,102 @@ def run_simulations(
         )
         rows.append(SimulationRow(option, result, "", result.real_value(ipca)))
     return rows
+
+
+def offered_strategies(data: dict[str, Any], start: datetime.date) -> list[Strategy]:
+    """Estratégias a partir das ofertas do formulário (à vista sempre entra)."""
+    price: int = data["valor"]
+    discount: Decimal = data.get("desconto") or Decimal(0)
+    cash_value = round(price * (1 - discount / 100))
+    label = f"À vista com {format_pct(discount)} de desconto" if discount else "À vista"
+    strategies = [Strategy("avista", label, (Payment(start, cash_value),))]
+    if n := data.get("sj_parcelas"):
+        first = 0 if data.get("sj_no_ato") else 1
+        strategies.append(
+            Strategy(
+                "sem-juros",
+                f"{n}x sem juros",
+                tuple(split_installments(start, price, n, first_in_months=first)),
+            )
+        )
+    if (n := data.get("cj_parcelas")) and data.get("cj_valor"):
+        strategies.append(
+            Strategy(
+                "com-juros",
+                f"{n}x de {format_brl(data['cj_valor'])}",
+                tuple(installments(start, n, data["cj_valor"])),
+            )
+        )
+    if (n := data.get("en_parcelas")) and data.get("en_valor"):
+        down = data.get("en_entrada") or 0
+        payments = [Payment(start, down)] if down else []
+        payments += installments(start, n, data["en_valor"])
+        strategies.append(
+            Strategy(
+                "entrada",
+                f"Entrada de {format_brl(down)} + {n}x de {format_brl(data['en_valor'])}",
+                tuple(payments),
+            )
+        )
+    return strategies
+
+
+@dataclass(frozen=True)
+class PurchaseAnalysis:
+    comparison: Comparison
+    option_label: str
+    explanation: str
+
+
+def analyze_purchase(
+    user: UserLike, data: dict[str, Any], *, start: datetime.date
+) -> PurchaseAnalysis:
+    """Compara as ofertas com o dinheiro aplicado onde ele está hoje."""
+    rates = effective_rates(user)
+    cdi, selic = rates[Series.CDI].annual, rates[Series.SELIC].annual
+    options = {o.key: o for o in simulation_options(user)}
+    option = options.get(data["produto"])
+    if option is None:
+        yield_: Yield = Prefixed(Decimal(0))
+        taxes = EXEMPT
+        label = "parado (sem rendimento)"
+    else:
+        yield_ = option.spec.yield_for(cdi=cdi, selic=selic)  # MissingRateError sobe
+        taxes = option.spec.taxation.rule
+        label = option.label
+    strategies = offered_strategies(data, start)
+    cash_price = strategies[0].payments[0].cents
+    comparison = compare(
+        strategies, yield_=yield_, taxes=taxes, start=start, cash_price_cents=cash_price
+    )
+    return PurchaseAnalysis(comparison, label, explain(comparison, label))
+
+
+def explain(comparison: Comparison, money_where: str) -> str:
+    """Frase com a recomendação e o porquê (sempre com números)."""
+    best = comparison.best
+    if len(comparison.results) == 1:
+        return f"{best.strategy.label} custa {format_brl(best.cost_cents)} em dinheiro de hoje."
+    runner_up = comparison.results[1]
+    text = (
+        f"{best.strategy.label} é a opção que menos pesa: custa {format_brl(best.cost_cents)} "
+        f"em dinheiro de hoje, {format_brl(runner_up.extra_vs_best_cents)} a menos que "
+        f"{runner_up.strategy.label.lower()}"
+    )
+    if best.strategy.key == "avista" and "desconto" in best.strategy.label:
+        reason = "o desconto vale mais do que o dinheiro renderia esperando as parcelas"
+    elif best.strategy.key == "avista":
+        reason = "as outras ofertas cobram mais do que o seu dinheiro rende"
+    elif best.strategy.key == "sem-juros" and "sem rendimento" not in money_where:
+        reason = f"o dinheiro continua rendendo ({money_where}) até cada parcela vencer"
+    elif best.strategy.key == "sem-juros":
+        reason = "o custo é o mesmo, mas o desembolso se espalha pelos meses"
+    else:
+        reason = "considerando o rendimento do dinheiro até cada pagamento"
+    text += f" — {reason}."
+    for r in comparison.results:
+        if r.implied_rate is None:
+            continue
+        monthly = format_pct((r.implied_rate * Decimal(100)).quantize(Decimal("0.01")))
+        text += f" {r.strategy.label} embute juros de {monthly} ao mês sobre o preço à vista."
+    return text

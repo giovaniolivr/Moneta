@@ -9,7 +9,10 @@
     <h1>Investimentos</h1>
     <p>Taxas de mercado usadas nas estimativas de rendimento e nas simulações.</p>
   </div>
-  <a class="btn btn-primary" href="{% url 'investments:simulator' %}">{% icon "trending-up" "icon-sm" %}Simulador</a>
+  <div class="page-actions">
+    <a class="btn btn-secondary" href="{% url 'investments:purchase' %}">{% icon "shopping-bag" "icon-sm" %}Estratégias de compra</a>
+    <a class="btn btn-primary" href="{% url 'investments:simulator' %}">{% icon "trending-up" "icon-sm" %}Simulador</a>
+  </div>
 </div>
 
 <section class="card" aria-labelledby="rates-title">

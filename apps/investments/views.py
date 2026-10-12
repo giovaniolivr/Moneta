@@ -12,11 +12,12 @@ from apps.core.drawer import done, render_drawer
 from apps.core.forms import apply_service_errors
 from apps.core.http import AuthenticatedHttpRequest
 
-from .domain.products import PRESETS
-from .forms import ProductForm, RateOverrideForm, SimulationForm
+from .domain.products import PRESETS, MissingRateError
+from .forms import NO_YIELD_KEY, ProductForm, PurchaseForm, RateOverrideForm, SimulationForm
 from .market import MarketDataError, update_rates
 from .models import InvestmentProduct
 from .selectors import (
+    analyze_purchase,
     effective_rates,
     list_products,
     product_rows,
@@ -178,4 +179,27 @@ def simulator(request: AuthenticatedHttpRequest) -> HttpResponse:
             "has_products": any(not o.key.startswith("ref-") for o in options),
             "rates": effective_rates(request.user),
         },
+    )
+
+
+def purchase(request: AuthenticatedHttpRequest) -> HttpResponse:
+    """Compara formas de pagar uma compra (parâmetros na URL)."""
+    today = timezone.localdate()
+    options = simulation_options(request.user)
+    form = PurchaseForm(
+        request.GET or None,
+        choices=[(o.key, o.label) for o in options],
+        initial={"produto": options[0].key if options else NO_YIELD_KEY},
+    )
+    analysis = None
+    missing = ""
+    if form.is_bound and form.is_valid():
+        try:
+            analysis = analyze_purchase(request.user, form.cleaned_data, start=today)
+        except MissingRateError as exc:
+            missing = str(exc)
+    return render(
+        request,
+        "investments/purchase.html",
+        {"form": form, "analysis": analysis, "missing": missing},
     )

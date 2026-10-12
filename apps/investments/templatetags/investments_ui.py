@@ -29,3 +29,11 @@ def field_named(form: Any, name: str) -> Any:
 @register.filter
 def subtract(a: int, b: int) -> int:
     return a - b
+
+
+@register.filter
+def percent_from_fraction_2(value: Decimal | None) -> str:
+    """Decimal("0.0292") → "2,92%"."""
+    if value is None:
+        return "—"
+    return format_pct((value * 100).quantize(Decimal("0.01")))

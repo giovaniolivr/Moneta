@@ -1120,6 +1120,13 @@
     color: var(--color-muted);
   }
 
+  .badge-best {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--color-income);
+  }
+
   .checkbox-row {
     display: inline-flex;
     align-items: center;

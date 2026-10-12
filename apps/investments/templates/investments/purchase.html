@@ -1,0 +1,79 @@
+{% extends "layouts/app.html" %}
+{% load ui money investments_ui %}
+
+{% block title %}Estratégias de compra{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Estratégias de compra</h1>
+    <p>À vista ou parcelado? Informe as ofertas e veja qual pesa menos no seu bolso — com o dinheiro rendendo até cada pagamento.</p>
+  </div>
+  <a class="btn btn-ghost" href="{% url 'investments:index' %}">Taxas e produtos</a>
+</div>
+
+<div class="stack">
+  <form class="card stack" method="get" action="">
+    {% if form.non_field_errors %}<div class="alert alert-error" role="alert">{% icon "circle-alert" "icon-sm" %}{{ form.non_field_errors|join:" " }}</div>{% endif %}
+    <div class="form-row">
+      {% for name in "valor produto desconto"|split_words %}{% with field=form|field_named:name %}
+        <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for e in field.errors %}<p class="field-error">{{ e }}</p>{% endfor %}</div>
+      {% endwith %}{% endfor %}
+    </div>
+    <fieldset class="field">
+      <legend>Parcelado sem juros (opcional)</legend>
+      <div class="form-row">
+        <div class="field"><label for="{{ form.sj_parcelas.id_for_label }}">{{ form.sj_parcelas.label }}</label>{{ form.sj_parcelas }}{% for e in form.sj_parcelas.errors %}<p class="field-error">{{ e }}</p>{% endfor %}</div>
+        <label class="checkbox-row">{{ form.sj_no_ato }} {{ form.sj_no_ato.label }}</label>
+      </div>
+    </fieldset>
+    <fieldset class="field">
+      <legend>Parcelado com juros (opcional)</legend>
+      <div class="form-row">
+        {% for name in "cj_parcelas cj_valor"|split_words %}{% with field=form|field_named:name %}
+          <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for e in field.errors %}<p class="field-error">{{ e }}</p>{% endfor %}</div>
+        {% endwith %}{% endfor %}
+      </div>
+    </fieldset>
+    <fieldset class="field">
+      <legend>Entrada + parcelas (opcional)</legend>
+      <div class="form-row">
+        {% for name in "en_entrada en_parcelas en_valor"|split_words %}{% with field=form|field_named:name %}
+          <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for e in field.errors %}<p class="field-error">{{ e }}</p>{% endfor %}</div>
+        {% endwith %}{% endfor %}
+      </div>
+    </fieldset>
+    <div><button class="btn btn-primary" type="submit">Comparar</button></div>
+  </form>
+
+  {% if missing %}
+    <div class="alert alert-error" role="alert">{% icon "circle-alert" "icon-sm" %}<span class="alert-text">Falta a taxa {{ missing }} para calcular o rendimento. <a href="{% url 'investments:index' %}">Atualizar taxas</a></span></div>
+  {% endif %}
+
+  {% if analysis %}{% with c=analysis.comparison %}
+    <section class="card stack" aria-labelledby="purchase-result-title">
+      <h2 id="purchase-result-title">Recomendação</h2>
+      <div class="alert alert-success" role="status">{% icon "circle-check" "icon-sm" %}<span class="alert-text">{{ analysis.explanation }}</span></div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th scope="col">Forma de pagar</th><th scope="col">Total pago</th><th scope="col">Maior desembolso num mês</th><th scope="col">Meses</th><th scope="col">Custo real (hoje)</th><th scope="col">A mais que a melhor</th><th scope="col">Juros embutidos</th></tr></thead>
+          <tbody>
+            {% for r in c.results %}
+              <tr>
+                <th scope="row">{{ r.strategy.label }}{% if forloop.first %} <span class="badge badge-best">{% icon "circle-check" "icon-sm" %}melhor</span>{% endif %}</th>
+                <td>{{ r.strategy.total_cents|brl }}</td>
+                <td>{{ r.strategy.max_month_cents|brl }}</td>
+                <td>{{ r.strategy.months_committed }}</td>
+                <td><strong>{{ r.cost_cents|brl }}</strong></td>
+                <td>{% if r.extra_vs_best_cents %}{{ r.extra_vs_best_cents|brl }}{% else %}—{% endif %}</td>
+                <td>{% if r.implied_rate is not None %}{{ r.implied_rate|percent_from_fraction_2 }} a.m.{% else %}—{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="text-sm muted">Como comparamos: o mesmo dinheiro começa aplicado em {{ analysis.option_label }}; cada pagamento é resgatado na data em que vence (com IR e IOF reais) e todas as opções são comparadas em {{ c.base_day|date:"d/m/Y" }}. O custo real é quanto você fica mais pobre por causa da compra, trazido para o dinheiro de hoje — à vista sem desconto custa exatamente o preço. Supõe as taxas constantes.</p>
+    </section>
+  {% endwith %}{% endif %}
+</div>
+{% endblock %}
