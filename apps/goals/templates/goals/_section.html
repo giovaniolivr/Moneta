@@ -1,0 +1,41 @@
+{% load ui money planning_ui %}<section class="card mb-4" aria-labelledby="goals-title">
+  <div class="card-header">
+    <h2 id="goals-title">Metas</h2>
+    <a class="btn btn-secondary btn-sm" href="{% url 'goals:goal_create' %}" data-drawer>{% icon "plus" "icon-sm" %}Nova meta</a>
+  </div>
+  {% if goals %}
+    <ul class="budget-list">
+      {% for row in goals %}
+        {% with p=row.progress g=row.goal %}
+          <li>
+            <a class="budget-row" href="{% url 'goals:goal_update' g.pk %}" data-drawer>
+              <span class="budget-head">
+                <span class="budget-name">{% icon "piggy-bank" "icon-sm" %}{{ g.name }} <span class="muted">· {{ g.account.name }}</span></span>
+                <span class="budget-value"><strong>{{ p.balance_cents|brl }}</strong> <span class="muted">de {{ p.target_cents|brl }} ({{ p.pct|stringformat:".0f" }}%)</span></span>
+              </span>
+              <svg class="bar-track budget-track" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <rect class="budget-fill goal-fill-{{ p.status }}" width="{{ p.pct|bar_width }}" height="8"></rect>
+              </svg>
+              <span class="budget-status goal-status-{{ p.status }}">
+                {% if p.status == "achieved" %}{% icon "circle-check" "icon-sm" %}Meta alcançada
+                {% elif p.status == "on_track" %}{% icon "circle-check" "icon-sm" %}No ritmo: precisa de {{ p.needed_monthly_cents|brl }}/mês até {{ g.deadline|date:"m/Y" }}; você tem aportado {{ p.pace_cents|brl }}/mês
+                {% elif p.status == "behind" %}{% icon "circle-alert" "icon-sm" %}Abaixo do ritmo: precisa de {{ p.needed_monthly_cents|brl }}/mês até {{ g.deadline|date:"m/Y" }}; você tem aportado {{ p.pace_cents|brl }}/mês
+                {% elif p.status == "beyond_capacity" %}{% icon "circle-alert" "icon-sm" %}Precisa de {{ p.needed_monthly_cents|brl }}/mês até {{ g.deadline|date:"m/Y" }}, mais do que você costuma guardar ({{ p.capacity_cents|brl }}/mês){% if p.overdue %} — o prazo já passou{% endif %}
+                {% elif p.status == "no_pace" %}{% icon "info" "icon-sm" %}Precisa de {{ p.needed_monthly_cents|brl }}/mês até {{ g.deadline|date:"m/Y" }} · ainda sem meses fechados para medir seus aportes
+                {% else %}{% icon "info" "icon-sm" %}{% if p.forecast_month %}No ritmo atual ({{ p.pace_cents|brl }}/mês), chega lá em {{ p.forecast_month|date:"F/Y"|lower }}{% else %}Sem aportes recentes nessa conta para estimar quando chega lá{% endif %}
+                {% endif %}
+              </span>
+            </a>
+          </li>
+        {% endwith %}
+      {% endfor %}
+    </ul>
+    <p class="text-sm muted">Aporte = quanto o saldo da conta cresceu por mês, em média, nos últimos meses fechados. Capacidade = suas receitas menos despesas, em média, nos mesmos meses. Rendimento ainda não entra na conta.</p>
+  {% else %}
+    <div class="empty-state">
+      {% icon "piggy-bank" %}
+      <p class="empty-state-title">Nenhuma meta</p>
+      <p class="text-sm">Crie uma meta ligada a uma conta (ex.: reserva de emergência na Caixinha) e acompanhe quanto falta e se o ritmo dos seus aportes chega lá no prazo.</p>
+    </div>
+  {% endif %}
+</section>

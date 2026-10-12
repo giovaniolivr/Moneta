@@ -1,0 +1,29 @@
+{% load ui %}
+<form class="stack" method="post" action="{% if goal %}{% url 'goals:goal_update' goal.pk %}{% else %}{% url 'goals:goal_create' %}{% endif %}" novalidate>
+  {% csrf_token %}
+  {% include "components/drawer_header.html" %}
+  {% if form.non_field_errors %}<div class="alert alert-error" role="alert">{% icon "circle-alert" "icon-sm" %}{{ form.non_field_errors|join:" " }}</div>{% endif %}
+  {% for field in form %}
+    <div class="field">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {% if field.name == "target" %}<div class="amount-wrap"><span class="amount-prefix" aria-hidden="true">R$</span>{{ field }}</div>{% else %}{{ field }}{% endif %}
+      {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+      {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+    </div>
+  {% endfor %}
+  <p class="field-help">O progresso é o saldo dessa conta; os aportes são as transferências que você já faz para ela. Rendimento ainda não entra na estimativa.</p>
+  <div class="form-actions form-actions-single">
+    <button class="btn btn-primary" type="submit">{% if goal %}Salvar alterações{% else %}Criar meta{% endif %}</button>
+  </div>
+</form>
+
+{% if goal %}
+  <details class="danger-zone">
+    <summary>{% icon "trash-2" "icon-sm" %}Excluir meta</summary>
+    <form method="post" action="{% url 'goals:goal_delete' goal.pk %}">
+      {% csrf_token %}
+      <p class="text-sm">A conta e o dinheiro nela não mudam.</p>
+      <button class="btn btn-danger" type="submit">Confirmar exclusão</button>
+    </form>
+  </details>
+{% endif %}

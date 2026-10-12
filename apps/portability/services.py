@@ -23,6 +23,7 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 
 from apps.core.names import InvalidNameError, clean_display_name, normalize_name
+from apps.goals.models import Goal
 from apps.ledger.models import Account, Transaction
 from apps.planning.models import Budget, InstallmentPlan, Recurrence
 from apps.taxonomy.models import Category, Tag
@@ -58,6 +59,7 @@ class ImportReport:
     recurrences: Counts = field(default_factory=Counts)
     installment_plans: Counts = field(default_factory=Counts)
     budgets: Counts = field(default_factory=Counts)
+    goals: Counts = field(default_factory=Counts)
     transactions: Counts = field(default_factory=Counts)
 
     def sections(self) -> list[tuple[str, Counts]]:
@@ -68,6 +70,7 @@ class ImportReport:
             ("Recorrências", self.recurrences),
             ("Compras parceladas", self.installment_plans),
             ("Orçamentos", self.budgets),
+            ("Metas", self.goals),
             ("Movimentações", self.transactions),
         ]
 
@@ -236,6 +239,7 @@ class _Importer:
             self.items(payload, "installment_plans", "Compra parcelada"), self.installment_plan
         )
         self.each(self.items(payload, "budgets", "Orçamento"), self.budget)
+        self.each(self.items(payload, "goals", "Meta"), self.goal)
         self.each(self.items(payload, "transactions", "Movimentação"), self.movement)
 
     def account(self, where: str, item: Item) -> None:
@@ -423,6 +427,30 @@ class _Importer:
         changed = obj.amount_cents != amount
         obj.amount_cents = amount
         self.save(obj, self.report.budgets, created=created, changed=changed, where=where)
+
+    def goal(self, where: str, item: Item) -> None:
+        """Upsert pelo UUID; sem ele, a meta da mesma conta é reaproveitada."""
+        pk = self.uuid_field(item, "id", where)
+        if self.owned_by_other(Goal, pk):
+            raise self.error(where, "o identificador pertence a outro usuário deste servidor.")
+        account = self.ref(self.accounts, Account, item, "account", where, "conta")
+        if account is None:
+            raise self.error(where, "campo “account” ausente.")
+        values: Item = {
+            "name": self.field(item, "name", where, str),
+            "target_cents": self.field(item, "target_cents", where, int),
+            "account": account,
+            "deadline": self.optional_date(item, "deadline", where),
+        }
+        own = Goal.objects.for_user(self.user)
+        obj = own.filter(pk=pk).first() or own.filter(account=account).first()
+        created = obj is None
+        if obj is None:
+            obj = Goal(id=pk, owner=self.user)
+        changed = any(getattr(obj, k) != v for k, v in values.items())
+        for k, v in values.items():
+            setattr(obj, k, v)
+        self.save(obj, self.report.goals, created=created, changed=changed, where=where)
 
     def optional_date(self, item: Item, key: str, where: str) -> datetime.date | None:
         return None if item.get(key) is None else self.date_field(item, key, where)

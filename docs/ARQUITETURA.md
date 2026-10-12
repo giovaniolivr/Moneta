@@ -455,7 +455,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 16 ✅ | Parcelamentos no cartão: compra em N× gera N parcelas previstas | cada parcela conta no seu mês |
 | 17 ✅ | Orçamentos mensais por categoria + ritmo pro-rata + insight | alerta só com evidência |
 | 18 ✅ | Projeção de saldo por conta e fatura prevista do cartão | projeção usa só previstas confirmáveis |
-| 19 | Metas (`apps/goals`) sobre o saldo de uma conta | aporte mensal necessário vs. capacidade de poupança |
+| 19 ✅ | Metas (`apps/goals`) sobre o saldo de uma conta | aporte mensal necessário vs. capacidade de poupança |
 | 20 | Dashboard realizado × previsto + polimento | |
 
 ## 11. Preparação para os módulos futuros

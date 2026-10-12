@@ -10,6 +10,8 @@ import pytest
 from django.utils import timezone
 
 from apps.analytics import selectors as analytics
+from apps.goals.models import Goal
+from apps.goals.services import create_goal
 from apps.ledger.models import Account, AccountKind, Transaction
 from apps.ledger.selectors import account_balances
 from apps.ledger.services import (
@@ -110,6 +112,7 @@ def data(user: Any) -> dict[str, Any]:
     )
     create_budget(user, category=cats["Alimentação"], amount_cents=150_000)
     create_budget(user, category=None, amount_cents=600_000)
+    create_goal(user, name="Reserva", target_cents=2_000_000, account=savings)
     set_category_archived(cats["Lazer"], archived=True)
     return {"checking": checking, "card": card, "savings": savings, "cats": cats}
 
@@ -123,6 +126,7 @@ def _wipe(user: Any) -> None:
     Recurrence.objects.for_user(user).delete()
     InstallmentPlan.objects.for_user(user).delete()
     Budget.objects.for_user(user).delete()
+    Goal.objects.for_user(user).delete()
     TagAlias.objects.for_user(user).delete()
     Tag.objects.for_user(user).delete()
     Account.objects.for_user(user).delete()
@@ -140,6 +144,7 @@ def test_round_trip_preserves_everything(user: Any, data: Any) -> None:
     assert report.recurrences.created == 1
     assert report.installment_plans.created == 1
     assert report.budgets.created == 2
+    assert report.goals.created == 1
     assert Transaction.objects.for_user(user).filter(installment_number=10).exists()
     assert report.transactions.created == len(before["transactions"])
     assert Transaction.objects.for_user(user).filter(recurrence__isnull=False).exists()

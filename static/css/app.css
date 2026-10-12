@@ -1177,6 +1177,33 @@
     fill: var(--color-expense);
   }
 
+  .goal-fill-achieved,
+  .goal-fill-on_track,
+  .goal-fill-no_deadline,
+  .goal-fill-no_pace {
+    fill: var(--color-income);
+  }
+
+  .goal-fill-behind,
+  .goal-fill-beyond_capacity {
+    fill: var(--color-warning);
+  }
+
+  .goal-status-achieved svg,
+  .goal-status-on_track svg {
+    color: var(--color-income);
+  }
+
+  .goal-status-behind svg,
+  .goal-status-beyond_capacity svg {
+    color: var(--color-warning);
+  }
+
+  .goal-status-no_pace svg,
+  .goal-status-no_deadline svg {
+    color: var(--color-info);
+  }
+
   .budget-expected {
     stroke: var(--color-ink);
     stroke-width: 2;

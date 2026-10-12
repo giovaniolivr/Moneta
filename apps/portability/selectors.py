@@ -10,6 +10,7 @@ from django.db.models import QuerySet
 from django.utils import timezone
 
 from apps.core.money import cents_to_decimal
+from apps.goals.models import Goal
 from apps.ledger.models import Account, Transaction
 from apps.planning.models import Budget, InstallmentPlan, Recurrence
 from apps.taxonomy.models import Category, Tag
@@ -112,6 +113,16 @@ def export_payload(user: UserLike) -> Payload:
         {"id": str(b.pk), "category": _str(b.category_id), "amount_cents": b.amount_cents}
         for b in Budget.objects.for_user(user).order_by("created_at", "pk")
     ]
+    goals = [
+        {
+            "id": str(g.pk),
+            "name": g.name,
+            "target_cents": g.target_cents,
+            "account": str(g.account_id),
+            "deadline": _iso(g.deadline),
+        }
+        for g in Goal.objects.for_user(user).order_by("created_at", "pk")
+    ]
     transactions = [
         {
             "id": str(tx.pk),
@@ -137,6 +148,7 @@ def export_payload(user: UserLike) -> Payload:
         "recurrences": recurrences,
         "installment_plans": installment_plans,
         "budgets": budgets,
+        "goals": goals,
         "transactions": transactions,
     }
 

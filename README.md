@@ -56,7 +56,7 @@ pytest · ruff · mypy (strict)
 - [x] 16. Compras parceladas (2× a 48×) direto no formulário: cada parcela no seu mês, futuras previstas, "Confirmar todas" em A confirmar
 - [x] 17. Orçamentos mensais (por categoria ou do total) com ritmo pelo seu próprio padrão de gasto, projeção do mês e alerta nas Análises
 - [x] 18. Projeção de saldo dia a dia por conta, faturas previstas do cartão (fechamento, vencimento, conta pagadora) e alerta de saldo negativo
-- [ ] 19. Metas sobre o saldo de uma conta
+- [x] 19. Metas sobre o saldo de uma conta: aporte mensal necessário, ritmo real de aportes, capacidade de poupança e data estimada
 - [ ] 20. Dashboard realizado × previsto
 
 **Próximas fases:** simulador de investimentos e estratégias de compra → pesquisa de preços →

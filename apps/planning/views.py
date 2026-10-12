@@ -13,6 +13,7 @@ from apps.analytics.domain.periods import add_months, month_end, month_start
 from apps.core.drawer import done, render_drawer
 from apps.core.forms import apply_service_errors
 from apps.core.http import AuthenticatedHttpRequest
+from apps.goals.selectors import goal_rows
 from apps.ledger.models import TransactionKind
 from apps.ledger.selectors import frequent_tags, last_used_account
 from apps.ledger.views import category_groups
@@ -55,6 +56,7 @@ def index(request: AuthenticatedHttpRequest) -> HttpResponse:
         request,
         "planning/index.html",
         {
+            "goals": goal_rows(request.user, today),
             "budgets": budget_rows(request.user, today, today),
             "month": today,
             "plans": list_installment_plans(request.user),

@@ -364,6 +364,15 @@ def seed_demo(
     _seed_recurrences(user, cat, today=today, start=start, accounts=(checking, card, savings))
     _seed_budgets(user, cat)
     _seed_card(user, cat, today=today, card=card, checking=checking)
+    from apps.goals.services import create_goal
+
+    create_goal(
+        user,
+        name="Reserva de emergência",
+        target_cents=2_000_000,
+        account=savings,
+        deadline=today.replace(year=today.year + 1, month=12, day=31),
+    )
     realized = Transaction.objects.for_user(user).filter(status=TransactionStatus.POSTED).count()
     return DemoSummary(accounts=4, transactions=realized, first_date=start, last_date=today)
 
