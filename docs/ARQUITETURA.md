@@ -73,7 +73,7 @@ Adaptações previstas:
 | Banco | **SQLite (WAL)** → PostgreSQL quando houver multiusuário real | Custo zero, backup = um arquivo. ORM torna a troca barata. | Postgres já no MVP (infra sem benefício agora) |
 | Interatividade | **HTMX** + **Alpine.js** (build CSP, pontual) + template partials nativos | Sem build de JS, sem SPA, sem estado duplicado. | React/Vue SPA |
 | Estilo | **CSS próprio com tokens** (variáveis por tema, `@layer`), sem build — ADR 0002 | Zero dependências, CSP estrita, contraste testado. Inter e ícones Lucide servidos localmente. | Tailwind v4 (exige binário e build) |
-| Gráficos | **Apache ECharts** | Gratuito, interativo, clique para drill-down, bom no mobile, tema escuro. | Chart.js (mais simples, drill-down mais limitado) |
+| Gráficos | **SVG próprio** (`static/js/charts.js`) — ADR 0003 | Especificações de dataviz, paleta validada para daltonismo, CSP estrita, tema instantâneo. | Apache ECharts, Chart.js |
 | API futura | **django-ninja** | Tipada (Pydantic), OpenAPI automático, chama os mesmos services. | DRF (mais verboso) |
 | Qualidade | `ruff` (lint+format), `mypy` + `django-stubs`, `pytest` + `pytest-django`, `hypothesis` só para o núcleo monetário | Tipagem e testes do domínio financeiro. | — |
 | Config | `django-environ` (`.env`) | Segredos fora do código. | — |
@@ -412,8 +412,8 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 6b ✅ | Lançamento em lote (`/movimentacoes/lote/`) | várias linhas, Enter cria a próxima, totais ao vivo, rascunho local, grava tudo-ou-nada |
 | 7 ✅ | Lista de movimentações + `TransactionFilter` | filtros combináveis, edição, exclusão |
 | 7b ✅ | Telas de categorias, tags (apelidos, mesclar) e contas | gestão completa sem usar o admin |
-| 8 | `analytics` selectors + metrics | KPIs batem com cálculo manual em fixtures |
-| 9 | Dashboard: KPIs + 3 gráficos principais + drill-down | clique leva à lista filtrada |
+| 8 ✅ | `analytics` selectors + metrics | KPIs batem com cálculo manual em fixtures |
+| 9 ✅ | Dashboard: KPIs + gráficos + drill-down | clique leva à lista filtrada |
 | 10 | Insights (regras + "dados insuficientes") | cada regra com teste |
 | 11 | Seções secundárias da dashboard (tags, formas de pgto, comparativos) | |
 | 12 | Export/import JSON, CSV, comando de backup | round-trip preserva totais |

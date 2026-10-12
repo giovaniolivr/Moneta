@@ -1,0 +1,11 @@
+{% load ui dashboard_ui %}{% if delta is None %}
+  <div class="stat-hint">Sem período anterior para comparar</div>
+{% elif delta.pct is None %}
+  <div class="stat-hint">Sem base de comparação no período anterior</div>
+{% else %}
+  <div class="delta delta-{% if delta.is_good %}good{% elif delta.is_good is False %}bad{% else %}flat{% endif %}">
+    {% if delta.direction == "up" %}{% icon "arrow-up-right" "icon-sm" %}{% elif delta.direction == "down" %}{% icon "arrow-down-left" "icon-sm" %}{% endif %}
+    <span>{% if delta.direction == "up" %}+{% endif %}{{ delta.pct|pct }}</span>
+    <span class="delta-context">vs período anterior</span>
+  </div>
+{% endif %}

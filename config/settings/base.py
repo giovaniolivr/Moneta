@@ -30,6 +30,8 @@ INSTALLED_APPS = [
     "apps.users",
     "apps.taxonomy",
     "apps.ledger",
+    "apps.analytics",
+    "apps.dashboard",
 ]
 
 MIDDLEWARE = [

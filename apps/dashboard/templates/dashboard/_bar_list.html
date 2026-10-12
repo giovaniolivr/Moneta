@@ -1,0 +1,19 @@
+{% load ui money dashboard_ui %}
+{% if rows %}
+  <ol class="bar-list">
+    {% for row in rows %}
+      <li>
+        <a class="bar-row" href="{{ row.link }}">
+          <span class="bar-label">
+            {% if with_icon %}<span class="bar-icon slot-{{ row.color }}">{% icon row.icon|default:"wallet" "icon-sm" %}</span>{% endif %}
+            <span class="bar-name">{{ prefix }}{{ row.label }}</span>
+          </span>
+          <span class="bar-value"><strong>{{ row.cents|brl }}</strong> <span class="muted">{{ row.pct|pct }}</span></span>
+          <svg class="bar-track" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect class="bar-fill" width="{{ row.width|stringformat:'.1f' }}" height="8"></rect></svg>
+        </a>
+      </li>
+    {% endfor %}
+  </ol>
+{% else %}
+  <p class="empty-state text-sm">{{ empty }}</p>
+{% endif %}

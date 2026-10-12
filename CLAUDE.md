@@ -16,7 +16,7 @@ Código (identificadores) em inglês.
 
 ## Stack
 Python 3.14 (uv) · Django 6.1 → 6.2 LTS (ADR 0001) · SQLite (Postgres no futuro) · HTMX ·
-CSS próprio sem build (ADR 0002) · Apache ECharts · pytest · ruff · mypy.
+CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytest · ruff · mypy.
 
 ## Regras inegociáveis
 - **Dinheiro em centavos inteiros** (`amount_cents`, `BigIntegerField`). Nunca `float`.
@@ -52,6 +52,14 @@ CSS próprio sem build (ADR 0002) · Apache ECharts · pytest · ruff · mypy.
 - Formulários com `instance=` usam `has_data(args, kwargs)` para decidir se aplicam os valores
   iniciais (`Form(request.POST or None)` passa `None` posicional).
 - Regras de exclusão: conta/categoria com movimentações só arquiva; sempre ≥ 1 conta ativa.
+- Dashboard: `apps/analytics` (domínio puro em `domain/`, agregações SQL em `selectors.py`,
+  montagem em `dashboard.py`) → `apps/dashboard` (view/template). Período em andamento é sempre
+  comparado pro-rata (`comparable_ranges`); período fechado com o anterior inteiro. Médias mensais
+  só com meses fechados. Todo gráfico tem tabela equivalente e link de drill-down
+  (`TransactionFilter.to_query()`).
+- Gráficos: dados via `json_script`, desenho em `static/js/charts.js`, cores pelas classes
+  `viz-*` (tokens `--color-chart-1..8`, paleta validada pelo skill dataviz). Texto nunca usa a cor
+  da série; séries ≥ 2 sempre com legenda.
 - Lote: `create_transactions()` é tudo-ou-nada e reporta erros de todas as linhas (`BatchError`);
   formset com prefixo `linhas` (máx. 100) + cabeçalho `lote`; JS em `static/js/batch.js`.
 - Menu lateral (desktop) é sempre compacto e expande por hover/foco — não há botão de recolher.

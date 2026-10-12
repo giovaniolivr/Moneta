@@ -1,0 +1,191 @@
+{% extends "layouts/app.html" %}
+{% load static ui money ledger_ui dashboard_ui %}
+
+{% block title %}Início{% endblock %}
+
+{% block head %}
+{{ block.super }}
+<script src="{% static 'js/charts.js' %}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Olá, {{ user.get_short_name|default:user.get_username }}</h1>
+    <p>
+      {{ dash.start|date:"d/m" }} a {% if dash.comparison %}{{ dash.comparison.current.end|date:"d/m/Y" }}{% else %}{{ dash.end|date:"d/m/Y" }}{% endif %}
+      {% if dash.comparison.partial %}· comparado com {{ dash.comparison.previous.start|date:"d/m" }} a {{ dash.comparison.previous.end|date:"d/m" }} (mesmos dias){% elif dash.comparison %}· comparado com {{ dash.comparison.previous.start|date:"d/m" }} a {{ dash.comparison.previous.end|date:"d/m/Y" }}{% endif %}
+    </p>
+  </div>
+  <nav class="period-tabs" aria-label="Período">
+    {% for value, label in periods %}
+      <a class="period-tab" href="?periodo={{ value }}"{% if value == dash.period %} aria-current="true"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+</div>
+
+<div class="dashboard">
+  {# ───── Indicadores ───── #}
+  <section class="kpis" aria-label="Indicadores do período">
+    <div class="card kpi kpi-hero">
+      <div class="stat-label">Saldo total hoje</div>
+      <div class="hero-value">{{ total_balance|brl }}</div>
+      <div class="stat-hint">{{ accounts|length }} conta{{ accounts|length|pluralize }} ativa{{ accounts|length|pluralize }}{% if dash.savings_rate is not None %} · você guardou {{ dash.savings_rate|pct }} das receitas no período{% endif %}</div>
+    </div>
+    {% for kpi in dash.kpis %}
+      <div class="card kpi">
+        <div class="stat-label">{{ kpi.label }}</div>
+        <div class="kpi-value">{% if kpi.key == "net" %}{{ kpi.cents|brl_signed }}{% else %}{{ kpi.cents|brl }}{% endif %}</div>
+        {% include "dashboard/_delta.html" with delta=kpi.delta %}
+      </div>
+    {% endfor %}
+    <div class="card kpi">
+      <div class="stat-label">Média diária de gastos</div>
+      <div class="kpi-value">{{ dash.daily_average_cents|brl }}</div>
+      <div class="stat-hint">
+        {% if dash.monthly_average_cents is not None %}Média mensal: {{ dash.monthly_average_cents|brl }} ({{ dash.closed_months }} mes{{ dash.closed_months|pluralize:"es" }} fechado{{ dash.closed_months|pluralize }}){% else %}Sem meses fechados para a média mensal{% endif %}
+      </div>
+    </div>
+  </section>
+
+  {% if not dash.has_data %}
+    <div class="card empty-state">
+      {% icon "inbox" %}
+      <p class="empty-state-title">Nenhuma receita ou despesa neste período</p>
+      <p class="text-sm">Registre movimentações{% if new_transaction_url %} — <a href="{{ new_transaction_url }}" data-drawer>uma</a> ou <a href="{% url 'ledger:transaction_batch' %}">várias de uma vez</a>{% endif %} — ou escolha outro período.</p>
+    </div>
+  {% endif %}
+
+  {# ───── Evolução mensal ───── #}
+  <section class="card chart-card span-2" aria-labelledby="chart-monthly-title">
+    <div class="chart-header">
+      <div>
+        <h2 id="chart-monthly-title">Receitas e despesas por mês</h2>
+        <p class="chart-subtitle">Clique num mês para ver as movimentações</p>
+      </div>
+      <ul class="legend">
+        <li><span class="viz-key viz-income"></span>Receitas</li>
+        <li><span class="viz-key viz-expense"></span>Despesas</li>
+      </ul>
+    </div>
+    <div class="chart" data-chart="columns" data-source="data-monthly" data-label="Receitas e despesas por mês"></div>
+    <details class="chart-table">
+      <summary>Ver tabela</summary>
+      <table>
+        <thead><tr><th scope="col">Mês</th><th scope="col">Receitas</th><th scope="col">Despesas</th><th scope="col">Resultado</th></tr></thead>
+        <tbody>
+          {% for row in dash.monthly_chart|monthly_rows %}
+            <tr><th scope="row"><a href="{{ row.link }}">{{ row.label }}</a></th><td>{{ row.income|brl }}</td><td>{{ row.expense|brl }}</td><td>{{ row.net|brl_signed }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
+  </section>
+
+  {# ───── Categorias ───── #}
+  <section class="card chart-card" aria-labelledby="chart-categories-title">
+    <div class="chart-header">
+      <div>
+        <h2 id="chart-categories-title">Despesas por categoria</h2>
+        <p class="chart-subtitle">Participação no total de {{ dash.totals.expense_cents|brl }}</p>
+      </div>
+    </div>
+    {% include "dashboard/_bar_list.html" with rows=dash.categories with_icon=True empty="Sem despesas no período." %}
+  </section>
+
+  {# ───── Ritmo do mês / resultado mensal ───── #}
+  {% if dash.pace_chart %}
+    <section class="card chart-card" aria-labelledby="chart-pace-title">
+      <div class="chart-header">
+        <div>
+          <h2 id="chart-pace-title">Ritmo de gastos</h2>
+          <p class="chart-subtitle">Despesas acumuladas dia a dia</p>
+        </div>
+        <ul class="legend">
+          {% for s in dash.pace_chart.series %}<li><span class="viz-key viz-key-line viz-{{ s.key }}"></span>{{ s.label }}</li>{% endfor %}
+        </ul>
+      </div>
+      <div class="chart" data-chart="lines" data-source="data-pace" data-label="Ritmo de gastos acumulados no mês"></div>
+      <details class="chart-table">
+        <summary>Ver tabela</summary>
+        <table>
+          <thead><tr><th scope="col">Dia</th>{% for s in dash.pace_chart.series %}<th scope="col">{{ s.label }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for row in dash.pace_chart|pace_rows %}
+              <tr><th scope="row">{{ row.day }}</th>{% for v in row.values %}<td>{% if v is None %}—{% else %}{{ v|brl }}{% endif %}</td>{% endfor %}</tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </details>
+    </section>
+  {% endif %}
+
+  <section class="card chart-card{% if not dash.pace_chart %} span-2{% endif %}" aria-labelledby="chart-net-title">
+    <div class="chart-header">
+      <div>
+        <h2 id="chart-net-title">Resultado mensal</h2>
+        <p class="chart-subtitle">Receitas menos despesas (transferências não entram)</p>
+      </div>
+      <ul class="legend">
+        <li><span class="viz-key viz-pos"></span>Sobrou</li>
+        <li><span class="viz-key viz-neg"></span>Faltou</li>
+      </ul>
+    </div>
+    <div class="chart" data-chart="diverging" data-source="data-net" data-label="Resultado mensal"></div>
+  </section>
+
+  {# ───── Tags, formas de pagamento, contas ───── #}
+  <section class="card chart-card" aria-labelledby="chart-tags-title">
+    <div class="chart-header"><div><h2 id="chart-tags-title">Tags com mais gastos</h2><p class="chart-subtitle">Uma movimentação com várias tags conta em cada uma</p></div></div>
+    {% include "dashboard/_bar_list.html" with rows=dash.tags prefix="#" empty="Nenhuma despesa com tag no período." %}
+  </section>
+
+  <section class="card chart-card" aria-labelledby="chart-methods-title">
+    <div class="chart-header"><div><h2 id="chart-methods-title">Formas de pagamento</h2><p class="chart-subtitle">Despesas do período</p></div></div>
+    {% include "dashboard/_bar_list.html" with rows=dash.payment_methods empty="Sem despesas no período." %}
+  </section>
+
+  <section class="card" aria-labelledby="accounts-title">
+    <div class="card-header">
+      <h2 id="accounts-title">Contas</h2>
+      <a class="text-sm" href="{% url 'ledger:account_list' %}">Gerenciar</a>
+    </div>
+    <ul class="list">
+      {% for row in accounts %}
+        <li class="list-item">
+          <span class="avatar-icon">{% icon row.account|account_icon %}</span>
+          <div class="list-item-main">
+            <div class="list-item-title">{{ row.account.name }}</div>
+            <div class="list-item-meta">{{ row.account.get_kind_display }}</div>
+          </div>
+          <span class="amount {% if row.balance_cents < 0 %}amount-expense{% else %}amount-neutral{% endif %}">{{ row.balance_cents|brl }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="card" aria-labelledby="recent-title">
+    <div class="card-header">
+      <h2 id="recent-title">Últimas movimentações</h2>
+      <a class="text-sm" href="{% url 'ledger:transaction_list' %}">Ver todas</a>
+    </div>
+    {% if recent_transactions %}
+      <ul class="list">
+        {% for tx in recent_transactions %}
+          {% include "components/transaction_row.html" with show_date=True %}
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty-state">
+        {% icon "inbox" %}
+        <p class="empty-state-title">Nenhuma movimentação ainda</p>
+        <p class="text-sm">Assim que você registrar receitas e despesas, elas aparecem aqui.</p>
+      </div>
+    {% endif %}
+  </section>
+</div>
+
+{{ dash.monthly_chart|json_script:"data-monthly" }}
+{{ dash.net_chart|json_script:"data-net" }}
+{% if dash.pace_chart %}{{ dash.pace_chart|json_script:"data-pace" }}{% endif %}
+{% endblock %}

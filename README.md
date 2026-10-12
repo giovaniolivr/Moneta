@@ -10,12 +10,14 @@ Detalhes técnicos em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) e decisões e
 
 ## Telas
 
-| Escuro | Claro |
+![Dashboard no tema escuro](docs/screenshots/dashboard-dark.png)
+
+| Tema claro | Lançamento em lote |
 |---|---|
-| ![Início no tema escuro](docs/screenshots/home-desktop-dark.png) | ![Início no tema claro](docs/screenshots/home-desktop-light.png) |
+| ![Dashboard no tema claro](docs/screenshots/dashboard-light.png) | ![Lançamento em lote](docs/screenshots/batch-dark.png) |
 
 <p>
-  <img src="docs/screenshots/home-mobile-dark.png" alt="Início no celular" width="260">
+  <img src="docs/screenshots/dashboard-mobile-dark.png" alt="Dashboard no celular" width="260">
   <img src="docs/screenshots/login-mobile-dark.png" alt="Login no celular" width="260">
 </p>
 
@@ -23,7 +25,7 @@ _Capturas com dados fictícios._
 
 ## Stack
 
-Python 3.14 · Django 6.1 · SQLite · HTMX · CSS próprio (sem build) · Apache ECharts ·
+Python 3.14 · Django 6.1 · SQLite · CSS e gráficos SVG próprios (sem build, sem dependências JS) ·
 pytest · ruff · mypy (strict)
 
 ## Status
@@ -40,8 +42,8 @@ pytest · ruff · mypy (strict)
 - [x] 6b. Lançamento em lote: várias movimentações numa tela, totais ao vivo, rascunho salvo, grava tudo ou nada
 - [x] 7. Lista com filtros combináveis (período, tipo, categoria, tag, conta, pagamento, busca), edição e exclusão
 - [x] 7b. Telas de categorias (cor e ícone), tags (apelidos, mesclar) e contas (saldo líquido, cartão como dívida)
-- [ ] 8. Motor de indicadores
-- [ ] 9. Dashboard com gráficos e drill-down
+- [x] 8. Motor de indicadores (comparação pro-rata, médias de meses fechados, detalhamentos)
+- [x] 9. Dashboard com gráficos acessíveis, tabela equivalente e drill-down para a lista
 - [ ] 10. Análises automáticas
 - [ ] 11. Seções secundárias da dashboard
 - [ ] 12. Exportação, importação e backup
