@@ -1,0 +1,17 @@
+{% load ui ledger_ui %}
+<li class="list-item">
+  {% if tx.category %}
+    <span class="avatar-icon slot-{{ tx.category.color }}">{% icon tx.category.icon|default:"wallet" %}</span>
+  {% else %}
+    <span class="avatar-icon">{% icon "arrow-left-right" %}</span>
+  {% endif %}
+  <div class="list-item-main">
+    <div class="list-item-title">
+      {% if tx.description %}{{ tx.description }}{% elif tx.category %}{{ tx.category.name }}{% else %}Transferência{% endif %}
+    </div>
+    <div class="list-item-meta">
+      {{ tx.date|date:"d/m" }} · {{ tx.account.name }}{% if tx.destination_account %} → {{ tx.destination_account.name }}{% endif %}{% for tag in tx.tags.all %} · #{{ tag.name }}{% endfor %}
+    </div>
+  </div>
+  <span class="amount {{ tx|tx_amount_class }}">{{ tx|tx_amount }}</span>
+</li>

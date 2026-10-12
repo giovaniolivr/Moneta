@@ -1,5 +1,6 @@
 import datetime
 import uuid
+from dataclasses import dataclass
 
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.db.models import BigIntegerField, Case, F, QuerySet, Sum, Value, When
@@ -67,3 +68,17 @@ def account_balances(
     for incoming in incoming_transfers:
         balances[incoming["destination_account_id"]] += incoming["delta"]
     return balances
+
+
+@dataclass(frozen=True)
+class AccountBalance:
+    account: Account
+    balance_cents: int
+
+
+def accounts_with_balances(
+    user: AbstractBaseUser | AnonymousUser, *, on: datetime.date | None = None
+) -> list[AccountBalance]:
+    """Contas ativas com o saldo de cada uma."""
+    balances = account_balances(user, on=on)
+    return [AccountBalance(a, balances[a.pk]) for a in list_accounts(user)]

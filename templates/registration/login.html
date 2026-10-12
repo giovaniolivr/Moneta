@@ -2,12 +2,29 @@
 
 {% block title %}Entrar{% endblock %}
 
-{% block content %}
-  <h1>Entrar</h1>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_div }}
-    <input type="hidden" name="next" value="{{ next }}">
-    <button type="submit">Entrar</button>
-  </form>
+{% block body %}
+<main class="auth">
+  <div class="auth-card">
+    <span class="brand"><span class="brand-mark">M</span>Moneta</span>
+    <form class="card stack" method="post" novalidate>
+      {% csrf_token %}
+      <h1>Entrar</h1>
+      {% if form.non_field_errors %}
+        <div class="alert alert-error" role="alert">{{ form.non_field_errors|join:" " }}</div>
+      {% endif %}
+      <div class="field">
+        <label for="{{ form.username.id_for_label }}">Usuário</label>
+        <input class="input" type="text" name="{{ form.username.html_name }}" id="{{ form.username.id_for_label }}"
+               value="{{ form.username.value|default:'' }}" autocomplete="username" autocapitalize="none" required autofocus>
+      </div>
+      <div class="field">
+        <label for="{{ form.password.id_for_label }}">Senha</label>
+        <input class="input" type="password" name="{{ form.password.html_name }}" id="{{ form.password.id_for_label }}"
+               autocomplete="current-password" required>
+      </div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="btn btn-primary btn-block" type="submit">Entrar</button>
+    </form>
+  </div>
+</main>
 {% endblock %}

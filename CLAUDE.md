@@ -15,8 +15,8 @@ Código (identificadores) em inglês.
   escuro (padrão) e claro; todo par texto/fundo deve passar contraste WCAG AA nos dois.
 
 ## Stack
-Python 3.14 (uv) · Django 6.1 → 6.2 LTS (ADR 0001) · SQLite (Postgres no futuro) · HTMX + Alpine.js ·
-Tailwind v4 via django-tailwind-cli (sem Node) · Apache ECharts · pytest · ruff · mypy.
+Python 3.14 (uv) · Django 6.1 → 6.2 LTS (ADR 0001) · SQLite (Postgres no futuro) · HTMX ·
+CSS próprio sem build (ADR 0002) · Apache ECharts · pytest · ruff · mypy.
 
 ## Regras inegociáveis
 - **Dinheiro em centavos inteiros** (`amount_cents`, `BigIntegerField`). Nunca `float`.
@@ -34,6 +34,17 @@ Tailwind v4 via django-tailwind-cli (sem Node) · Apache ECharts · pytest · ru
 - Análises automáticas devem expor a evidência numérica e declarar quando não há dados
   suficientes. Não comparar mês parcial com meses fechados sem pro-rata.
 - Não implementar funcionalidades de fases futuras antecipadamente.
+
+## Interface
+- Estilos só em `static/css/app.css`, usando tokens `var(--color-…)`; cores novas entram nos
+  dois temas e passam pelo teste de contraste. Categorias usam `slot-1..8`, não hex.
+- CSP estrita: proibido `style=""`, `onclick=` e `<script>` inline sem `nonce="{{ csp_nonce }}"`
+  (verificado por teste). JS em `static/js/`.
+- Ícones: `{% load ui %}{% icon "nome" %}`; para incluir um novo, adicionar em
+  `scripts/build_icon_sprite.py` e rodar o script.
+- Páginas de app estendem `layouts/app.html`; itens de menu em `apps/core/navigation.py`
+  (ativam sozinhos quando a rota existe).
+- Valores monetários sempre com sinal/ícone além da cor (`|tx_amount`, `|brl_signed`).
 
 ## Estrutura
 `config/settings/{base,dev,test,prod}.py` · `apps/<app>/` (`models`, `services`, `selectors`,

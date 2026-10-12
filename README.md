@@ -8,9 +8,22 @@ dashboard analítica e, no futuro, objetivos, simulação de investimentos e est
 Uso pessoal por enquanto, com arquitetura pronta para multiusuário e clientes web/mobile.
 Detalhes técnicos em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) e decisões em [`docs/adr/`](docs/adr/).
 
+## Telas
+
+| Escuro | Claro |
+|---|---|
+| ![Início no tema escuro](docs/screenshots/home-desktop-dark.png) | ![Início no tema claro](docs/screenshots/home-desktop-light.png) |
+
+<p>
+  <img src="docs/screenshots/home-mobile-dark.png" alt="Início no celular" width="260">
+  <img src="docs/screenshots/login-mobile-dark.png" alt="Login no celular" width="260">
+</p>
+
+_Capturas com dados fictícios._
+
 ## Stack
 
-Python 3.14 · Django 6.1 · SQLite · HTMX + Alpine.js · Tailwind v4 · Apache ECharts ·
+Python 3.14 · Django 6.1 · SQLite · HTMX · CSS próprio (sem build) · Apache ECharts ·
 pytest · ruff · mypy (strict)
 
 ## Status
@@ -22,9 +35,10 @@ pytest · ruff · mypy (strict)
 - [x] 2. Contas e categorias (padrões criados por usuário, nomes únicos sem caixa/acentos)
 - [x] 3. Tags com normalização, apelidos, mesclagem explícita e busca para autocomplete
 - [x] 4. Movimentações (receitas, despesas, transferências) com regras garantidas no banco e saldo por conta
-- [ ] 5. Layout base e temas escuro/claro
+- [x] 5. Layout base e temas escuro/claro (CSS próprio sem build, contraste WCAG AA testado)
 - [ ] 6. Registro rápido de movimentação
 - [ ] 7. Lista e filtros de movimentações
+- [ ] 7b. Telas de categorias, tags e contas
 - [ ] 8. Motor de indicadores
 - [ ] 9. Dashboard com gráficos e drill-down
 - [ ] 10. Análises automáticas

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load ui %}
+
+{% block body %}
+<a class="sr-only" href="#conteudo">Pular para o conteúdo</a>
+<div class="app">
+  <aside class="sidebar" aria-label="Menu principal">
+    <a class="brand" href="{% url 'home' %}"><span class="brand-mark">M</span>Moneta</a>
+
+    {% if new_transaction_url %}
+      <a class="btn btn-primary btn-block" href="{{ new_transaction_url }}">{% icon "plus" "icon-sm" %}Nova movimentação</a>
+    {% endif %}
+
+    <nav class="sidebar-nav">
+      {% for item in nav_items %}
+        {% if item.url %}
+          <a href="{{ item.url }}"{% if item.active %} aria-current="page"{% endif %}>{% icon item.icon %}{{ item.label }}</a>
+        {% else %}
+          <a aria-disabled="true" title="Em breve">{% icon item.icon %}{{ item.label }}<span class="badge ml-auto">em breve</span></a>
+        {% endif %}
+      {% endfor %}
+    </nav>
+
+    <div class="sidebar-footer">
+      <span title="{{ user.get_username }}">{{ user.get_short_name|default:user.get_username }}</span>
+      <span>
+        <button class="btn btn-ghost btn-icon theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema claro/escuro">
+          {% icon "sun" "icon-sun" %}{% icon "moon" "icon-moon" %}
+        </button>
+        <form class="inline" method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button class="btn btn-ghost btn-icon" type="submit" aria-label="Sair">{% icon "log-out" %}</button>
+        </form>
+      </span>
+    </div>
+  </aside>
+
+  <header class="topbar">
+    <a class="brand" href="{% url 'home' %}"><span class="brand-mark">M</span>Moneta</a>
+    <span>
+      <button class="btn btn-ghost btn-icon theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema claro/escuro">
+        {% icon "sun" "icon-sun" %}{% icon "moon" "icon-moon" %}
+      </button>
+      <form class="inline" method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button class="btn btn-ghost btn-icon" type="submit" aria-label="Sair">{% icon "log-out" %}</button>
+      </form>
+    </span>
+  </header>
+
+  <main class="main" id="conteudo">
+    {% if messages %}
+      <div class="stack mb-4">
+        {% for message in messages %}
+          <div class="alert{% if message.level_tag == 'error' %} alert-error{% endif %}" role="status">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <nav class="bottom-nav" aria-label="Menu principal">
+    {% with items=nav_items %}
+      {% with item=items.0 %}
+        <a href="{{ item.url }}"{% if item.active %} aria-current="page"{% endif %}>{% icon item.icon %}Início</a>
+      {% endwith %}
+      {% with item=items.1 %}
+        {% if item.url %}<a href="{{ item.url }}"{% if item.active %} aria-current="page"{% endif %}>{% else %}<a aria-disabled="true">{% endif %}{% icon item.icon %}Movimentos</a>
+      {% endwith %}
+      {% if new_transaction_url %}
+        <a class="bottom-nav-add" href="{{ new_transaction_url }}" aria-label="Nova movimentação">{% icon "plus" %}</a>
+      {% else %}
+        <a class="bottom-nav-add" aria-disabled="true" aria-label="Nova movimentação (em breve)">{% icon "plus" %}</a>
+      {% endif %}
+      <a aria-disabled="true" title="Em breve">{% icon "ellipsis" %}Mais</a>
+    {% endwith %}
+  </nav>
+</div>
+{% endblock %}

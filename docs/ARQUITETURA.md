@@ -72,13 +72,13 @@ Adaptações previstas:
 | Framework | **Django 6.1** → **6.2 LTS** quando sair (abr/2027) | CSP nativo, template partials nativos (ideal p/ HTMX), framework de tasks, `LoginRequiredMiddleware`. Ver ADR 0001. | Django 5.2 LTS (mais suporte, menos recursos) · FastAPI |
 | Banco | **SQLite (WAL)** → PostgreSQL quando houver multiusuário real | Custo zero, backup = um arquivo. ORM torna a troca barata. | Postgres já no MVP (infra sem benefício agora) |
 | Interatividade | **HTMX** + **Alpine.js** (build CSP, pontual) + template partials nativos | Sem build de JS, sem SPA, sem estado duplicado. | React/Vue SPA |
-| Estilo | **Tailwind v4** via `django-tailwind-cli` (binário standalone, **sem Node**) com tokens do DESIGN.md em `@theme` | Tokens viram classes; sem toolchain Node. | CSS puro (mais lento de iterar) |
+| Estilo | **CSS próprio com tokens** (variáveis por tema, `@layer`), sem build — ADR 0002 | Zero dependências, CSP estrita, contraste testado. Inter e ícones Lucide servidos localmente. | Tailwind v4 (exige binário e build) |
 | Gráficos | **Apache ECharts** | Gratuito, interativo, clique para drill-down, bom no mobile, tema escuro. | Chart.js (mais simples, drill-down mais limitado) |
 | API futura | **django-ninja** | Tipada (Pydantic), OpenAPI automático, chama os mesmos services. | DRF (mais verboso) |
 | Qualidade | `ruff` (lint+format), `mypy` + `django-stubs`, `pytest` + `pytest-django`, `hypothesis` só para o núcleo monetário | Tipagem e testes do domínio financeiro. | — |
 | Config | `django-environ` (`.env`) | Segredos fora do código. | — |
 
-**Dependências de runtime no MVP:** Django, django-environ, django-tailwind-cli, argon2-cffi. Só isso. HTMX/Alpine/ECharts como arquivos estáticos vendorizados.
+**Dependências de runtime no MVP:** Django, django-environ, django-stubs-ext, argon2-cffi. Só isso. HTMX/Alpine/ECharts como arquivos estáticos vendorizados.
 
 **Execução:** 100% local com `manage.py runserver`. Deploy para outros usuários **[ADIAR]**;
 quando vier: Postgres, servidor WSGI/ASGI, `settings/prod.py` (já existe e é testado). Acesso pelo
@@ -398,9 +398,10 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 2 ✅ | Contas e categorias (models, seed padrão, admin) | seed cria categorias para um usuário novo |
 | 3 ✅ | Tags + normalização + aliases + merge | testes de normalização e merge |
 | 4 ✅ | Transaction + services (CRUD, validações, transferências) | regras da §4 testadas; merge de tags move as associações das movimentações |
-| 5 | Layout base + tokens do DESIGN.md (Tailwind) + componentes | tela vazia navegável no celular |
+| 5 ✅ | Layout base + tokens (temas escuro/claro) + componentes | tela navegável no celular; contraste AA testado |
 | 6 | Formulário rápido de nova movimentação | registro em < 10 s no celular |
 | 7 | Lista de movimentações + `TransactionFilter` | filtros combináveis, edição, exclusão |
+| 7b | Telas de categorias, tags (apelidos, mesclar) e contas | gestão completa sem usar o admin |
 | 8 | `analytics` selectors + metrics | KPIs batem com cálculo manual em fixtures |
 | 9 | Dashboard: KPIs + 3 gráficos principais + drill-down | clique leva à lista filtrada |
 | 10 | Insights (regras + "dados insuficientes") | cada regra com teste |
