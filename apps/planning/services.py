@@ -16,8 +16,11 @@ from apps.ledger.services import TransactionData
 from apps.taxonomy.services import get_or_create_tags
 from apps.users.models import User
 
+from .domain.installments import due_dates as installment_dates
+from .domain.installments import label as installment_label
+from .domain.installments import split as split_installments
 from .domain.schedule import Frequency, occurrences
-from .models import Recurrence
+from .models import InstallmentPlan, Recurrence
 
 HORIZON_DAYS = 92  # ~3 meses de previstas à frente
 SCHEDULE_FIELDS = ("frequency", "interval", "start_date", "end_date")
@@ -207,3 +210,98 @@ def materialize(user: User, *, today: datetime.date) -> int:
         rec.generated_through = horizon
         rec.save(update_fields=["generated_through", "updated_at"])
     return created
+
+
+# Compras parceladas ------------------------------------------------------------
+
+
+def _installment_label(plan: InstallmentPlan, number: int) -> str:
+    return installment_label(plan.description, number, plan.count)
+
+
+@transaction.atomic
+def create_installment_plan(
+    user: User, data: TransactionData, *, count: int, today: datetime.date
+) -> InstallmentPlan:
+    """Despesa parcelada: o valor de `data` é o TOTAL; gera uma movimentação por parcela.
+
+    Parcelas com data até hoje nascem realizadas (a compra aconteceu); as futuras, previstas.
+    """
+    if data.kind != TransactionKind.EXPENSE:
+        raise ValidationError({"kind": "Só despesas podem ser parceladas."})
+    try:
+        amounts = split_installments(data.amount_cents, count)
+    except ValueError as exc:
+        raise ValidationError({"installments": str(exc).capitalize() + "."}) from None
+    category = data.category
+    plan = InstallmentPlan(
+        owner=user,
+        description=(data.description.strip() or (category.name if category else "Compra"))[:120],
+        total_cents=data.amount_cents,
+        count=count,
+        purchase_date=data.date,
+        account=data.account,
+        category=category,
+        payment_method=data.payment_method,
+        notes=data.notes.strip(),
+    )
+    plan.full_clean()
+    plan.save()
+    tags = get_or_create_tags(user, data.tags)
+    plan.tags.set(tags)
+    for number, (amount, day) in enumerate(
+        zip(amounts, installment_dates(data.date, count), strict=True), start=1
+    ):
+        tx = Transaction(
+            owner=user,
+            kind=TransactionKind.EXPENSE,
+            status=TransactionStatus.POSTED if day <= today else TransactionStatus.PLANNED,
+            amount_cents=amount,
+            date=day,
+            account=plan.account,
+            category=plan.category,
+            payment_method=plan.payment_method,
+            description=_installment_label(plan, number),
+            notes=plan.notes,
+            installment_plan=plan,
+            installment_number=number,
+        )
+        tx.full_clean()
+        tx.save()
+        tx.tags.set(tags)
+    return plan
+
+
+@transaction.atomic
+def update_installment_plan(
+    plan: InstallmentPlan,
+    *,
+    description: str,
+    category: Any,
+    tag_names: list[str],
+    notes: str,
+) -> InstallmentPlan:
+    """Descrição, categoria, tags e observações valem para todas as parcelas (é a mesma
+    compra). Valor, parcelas e data não mudam: para isso, exclua e registre de novo."""
+    plan.description = description.strip()[:120]
+    plan.category = category
+    plan.notes = notes.strip()
+    plan.full_clean()
+    plan.save()
+    tags = get_or_create_tags(plan.owner, tag_names)
+    plan.tags.set(tags)
+    for tx in plan.transactions.all():
+        tx.description = _installment_label(plan, tx.installment_number or 0)
+        tx.category = plan.category
+        tx.notes = plan.notes
+        tx.full_clean()
+        tx.save(update_fields=["description", "category", "notes", "updated_at"])
+        tx.tags.set(tags)
+    return plan
+
+
+@transaction.atomic
+def delete_installment_plan(plan: InstallmentPlan) -> None:
+    """Remove as parcelas previstas; as já realizadas ficam no histórico."""
+    plan.transactions.filter(status=TransactionStatus.PLANNED).delete()
+    plan.delete()

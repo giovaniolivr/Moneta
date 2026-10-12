@@ -115,3 +115,52 @@ class Recurrence(OwnedModel):
             on_or_after=today,
             end=self.end_date,
         )
+
+
+class InstallmentPlan(OwnedModel):
+    """Compra parcelada: gera uma movimentação por parcela, cada uma no seu mês.
+
+    Parcelas até hoje nascem realizadas (a compra aconteceu); as futuras, previstas — passam
+    por "A confirmar" como qualquer prevista.
+    """
+
+    description = models.CharField("descrição", max_length=120)
+    total_cents = models.BigIntegerField("valor total (centavos)")
+    count = models.PositiveSmallIntegerField("parcelas")
+    purchase_date = models.DateField("data da compra")
+    account = models.ForeignKey(
+        Account, on_delete=models.RESTRICT, related_name="installment_plans", verbose_name="conta"
+    )
+    category = models.ForeignKey(
+        "taxonomy.Category",
+        on_delete=models.RESTRICT,
+        related_name="installment_plans",
+        verbose_name="categoria",
+    )
+    tags = models.ManyToManyField(
+        "taxonomy.Tag", related_name="installment_plans", blank=True, verbose_name="tags"
+    )
+    payment_method = models.CharField(
+        "forma de pagamento", max_length=10, choices=PaymentMethod.choices, blank=True
+    )
+    notes = models.TextField("observações", blank=True)
+
+    class Meta:
+        verbose_name = "compra parcelada"
+        verbose_name_plural = "compras parceladas"
+        ordering = ["-purchase_date", "-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(total_cents__gt=0, total_cents__lte=MAX_CENTS),
+                name="installmentplan_total_positive",
+                violation_error_message="O valor deve ser maior que zero.",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(count__gte=2, count__lte=48),
+                name="installmentplan_count_range",
+                violation_error_message="Parcele entre 2 e 48 vezes.",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.description} ({self.count}x)"

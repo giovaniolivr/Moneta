@@ -16,6 +16,15 @@
 
   {% include "ledger/_entry_fields.html" %}
 
+  {% if form.installments %}
+    <div class="field installments-field" data-only="expense">
+      <label for="{{ form.installments.id_for_label }}">{{ form.installments.label }}</label>
+      {{ form.installments }}
+      <p class="field-help">Parcelado: informe o valor <strong>total</strong>. Cada parcela conta no seu mês; as futuras ficam previstas.</p>
+      {% for error in form.installments.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
   {% if transaction.is_planned %}
     <p class="alert" role="note">{% icon "calendar" "icon-sm" %}<span class="alert-text">Prevista: só entra em saldos e análises quando for confirmada.</span></p>
   {% else %}

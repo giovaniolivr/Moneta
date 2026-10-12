@@ -30,6 +30,29 @@
   </div>
 {% endif %}
 
+{% if plans %}
+  <section class="card mb-4" aria-labelledby="plans-title">
+    <div class="card-header">
+      <h2 id="plans-title">Compras parceladas</h2>
+      <span class="text-sm muted">Registre pelo “+” com o campo Parcelas</span>
+    </div>
+    <ul class="list">
+      {% for plan in plans %}
+        <li>
+          <a class="list-item list-item-link{% if not plan.remaining_cents %} is-muted{% endif %}" href="{% url 'planning:installment_update' plan.pk %}" data-drawer>
+            <span class="avatar-icon slot-{{ plan.category.color }}">{% icon plan.category.icon|default:"credit-card" %}</span>
+            <span class="list-item-main">
+              <span class="list-item-title">{{ plan.description }}</span>
+              <span class="list-item-meta">{{ plan.paid }}/{{ plan.count }} pagas · {{ plan.account.name }}{% if plan.next_date %} · próxima em {{ plan.next_date|date:"d/m/Y" }}{% else %} · quitada{% endif %}</span>
+            </span>
+            <span class="amount amount-expense">{% if plan.remaining_cents %}falta {{ plan.remaining_cents|brl }}{% else %}{{ plan.total_cents|brl }}{% endif %}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+
 <section class="card" aria-labelledby="recurrences-title">
   <div class="card-header">
     <h2 id="recurrences-title">Recorrências</h2>

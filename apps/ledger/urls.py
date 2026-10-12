@@ -13,6 +13,11 @@ urlpatterns = [
     path("movimentacoes/desfazer/", views.transaction_restore, name="transaction_restore"),
     path("movimentacoes/previstas/", views.planned_list, name="planned_list"),
     path(
+        "movimentacoes/previstas/confirmar/",
+        views.planned_confirm_due,
+        name="planned_confirm_due",
+    ),
+    path(
         "movimentacoes/<uuid:pk>/confirmar/", views.transaction_confirm, name="transaction_confirm"
     ),
     path("contas/", views.account_list, name="account_list"),

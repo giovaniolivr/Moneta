@@ -9,19 +9,22 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.core.drawer import done, render_drawer
+from apps.core.forms import apply_service_errors
 from apps.core.http import AuthenticatedHttpRequest
 from apps.ledger.models import TransactionKind
 from apps.ledger.selectors import frequent_tags, last_used_account
 from apps.ledger.views import category_groups
 
-from .forms import RecurrenceForm
+from .forms import InstallmentPlanForm, RecurrenceForm
 from .models import Recurrence
-from .selectors import list_recurrences
+from .selectors import list_installment_plans, list_recurrences
 from .services import (
     create_recurrence,
+    delete_installment_plan,
     delete_recurrence,
     materialize,
     set_recurrence_active,
+    update_installment_plan,
     update_recurrence,
 )
 
@@ -41,6 +44,7 @@ def index(request: AuthenticatedHttpRequest) -> HttpResponse:
         request,
         "planning/index.html",
         {
+            "plans": list_installment_plans(request.user),
             "recurrences": [(r, r.next_date(today)) for r in recurrences],
             "monthly_expense": monthly(TransactionKind.EXPENSE),
             "monthly_income": monthly(TransactionKind.INCOME),
@@ -118,3 +122,37 @@ def recurrence_delete(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpR
     label = rec.label
     delete_recurrence(rec)
     return done(request, f"Recorrência “{label}” excluída.", fallback=INDEX)
+
+
+@require_http_methods(["GET", "POST"])
+def installment_update(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpResponse:
+    plan = get_object_or_404(list_installment_plans(request.user), pk=pk)
+    form = InstallmentPlanForm(request.POST or None, user=request.user, plan=plan)
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        try:
+            update_installment_plan(
+                plan,
+                description=d["description"],
+                category=d["category"],
+                tag_names=form.tag_names(),
+                notes=d["notes"],
+            )
+        except ValidationError as error:
+            apply_service_errors(form, error)
+        else:
+            return done(request, "Compra parcelada atualizada.", fallback=INDEX)
+    return render_drawer(
+        request,
+        "planning/_installment_form.html",
+        {"form": form, "plan": plan},
+        title="Compra parcelada",
+    )
+
+
+@require_POST
+def installment_delete(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpResponse:
+    plan = get_object_or_404(list_installment_plans(request.user), pk=pk)
+    label = plan.description
+    delete_installment_plan(plan)
+    return done(request, f"Compra parcelada “{label}” excluída.", fallback=INDEX)

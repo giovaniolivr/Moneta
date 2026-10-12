@@ -16,7 +16,7 @@ from apps.core.drawer import done, render_drawer, safe_next
 from apps.core.forms import apply_service_errors
 from apps.core.http import AuthenticatedHttpRequest
 from apps.core.money import format_brl
-from apps.planning.services import materialize
+from apps.planning.services import create_installment_plan, materialize
 from apps.taxonomy.models import Category, CategoryKind
 from apps.taxonomy.selectors import list_categories
 from apps.users.models import User
@@ -44,6 +44,7 @@ from .selectors import (
 )
 from .services import (
     BatchError,
+    confirm_due,
     confirm_transaction,
     create_account,
     create_transaction,
@@ -113,6 +114,16 @@ def transaction_create(request: AuthenticatedHttpRequest) -> HttpResponse:
     form = TransactionForm(request.POST, user=user)
     if form.is_valid():
         try:
+            if form.installment_count > 1:
+                plan = create_installment_plan(
+                    user, form.to_data(), count=form.installment_count, today=timezone.localdate()
+                )
+                return done(
+                    request,
+                    f"Compra parcelada em {plan.count}x registrada "
+                    f"(total {format_brl(plan.total_cents)}).",
+                    fallback="home",
+                )
             tx = create_transaction(user, form.to_data())
         except ValidationError as error:
             form.add_service_errors(error)
@@ -148,6 +159,14 @@ def transaction_update(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> Http
             message = "Movimentação confirmada." if confirm else "Movimentação atualizada."
             return done(request, message, fallback="ledger:transaction_list")
     return _render_form(request, form)
+
+
+@require_POST
+def planned_confirm_due(request: AuthenticatedHttpRequest) -> HttpResponse:
+    count = confirm_due(request.user, today=timezone.localdate())
+    plural = "movimentação confirmada" if count == 1 else "movimentações confirmadas"
+    messages.success(request, f"{count} {plural}.")
+    return redirect(safe_next(request) or "ledger:planned_list")
 
 
 @require_POST

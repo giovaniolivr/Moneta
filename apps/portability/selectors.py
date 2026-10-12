@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from apps.core.money import cents_to_decimal
 from apps.ledger.models import Account, Transaction
-from apps.planning.models import Recurrence
+from apps.planning.models import InstallmentPlan, Recurrence
 from apps.taxonomy.models import Category, Tag
 
 from .schema import FORMAT, SCHEMA_VERSION, Payload
@@ -88,6 +88,23 @@ def export_payload(user: UserLike) -> Payload:
         .prefetch_related("tags")
         .order_by("created_at", "pk")
     ]
+    installment_plans = [
+        {
+            "id": str(plan.pk),
+            "description": plan.description,
+            "total_cents": plan.total_cents,
+            "count": plan.count,
+            "purchase_date": plan.purchase_date.isoformat(),
+            "account": str(plan.account_id),
+            "category": str(plan.category_id),
+            "tags": sorted(str(t.pk) for t in plan.tags.all()),
+            "payment_method": plan.payment_method,
+            "notes": plan.notes,
+        }
+        for plan in InstallmentPlan.objects.for_user(user)
+        .prefetch_related("tags")
+        .order_by("created_at", "pk")
+    ]
     transactions = [
         {
             "id": str(tx.pk),
@@ -96,6 +113,8 @@ def export_payload(user: UserLike) -> Payload:
             "date": tx.date.isoformat(),
             "recurrence": _str(tx.recurrence_id),
             "occurrence_date": _iso(tx.occurrence_date),
+            "installment_plan": _str(tx.installment_plan_id),
+            "installment_number": tx.installment_number,
         }
         for tx in Transaction.objects.for_user(user)
         .prefetch_related("tags")
@@ -109,6 +128,7 @@ def export_payload(user: UserLike) -> Payload:
         "categories": categories,
         "tags": tags,
         "recurrences": recurrences,
+        "installment_plans": installment_plans,
         "transactions": transactions,
     }
 

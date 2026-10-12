@@ -68,6 +68,13 @@ class TransactionForm(forms.Form):
     notes = forms.CharField(
         label="Observações", required=False, widget=forms.Textarea(attrs={"rows": 2})
     )
+    installments = forms.TypedChoiceField(
+        label="Parcelas",
+        choices=[(1, "À vista"), *((n, f"{n}x") for n in range(2, 49))],
+        coerce=int,
+        initial=1,
+        required=False,
+    )
 
     def __init__(
         self, *args: Any, user: User, instance: Transaction | None = None, **kwargs: Any
@@ -89,6 +96,8 @@ class TransactionForm(forms.Form):
             Q(is_archived=False) | keep_category
         )
         self.fields["date"].initial = timezone.localdate
+        if instance is not None:
+            del self.fields["installments"]  # parcelar só ao registrar a compra
         self.fields["amount"].widget.attrs.update({"class": "amount-input", "autofocus": True})
         for name in (
             "account",
@@ -100,6 +109,8 @@ class TransactionForm(forms.Form):
             "notes",
         ):
             self.fields[name].widget.attrs.setdefault("class", "input")
+        if "installments" in self.fields:
+            self.fields["installments"].widget.attrs.setdefault("class", "input")
 
     def clean(self) -> dict[str, Any]:
         data = super().clean() or {}
@@ -116,6 +127,8 @@ class TransactionForm(forms.Form):
             if not data.get("category") and "category" not in self.errors:
                 self.add_error("category", "Escolha uma categoria.")
         account: Account | None = data.get("account")
+        if data.get("kind") != TransactionKind.EXPENSE:
+            data["installments"] = 1
         if (
             data.get("kind") == TransactionKind.EXPENSE
             and account is not None
@@ -170,6 +183,10 @@ class TransactionForm(forms.Form):
     def add_service_errors(self, error: ValidationError) -> None:
         """Erros de regra de negócio (service/model) exibidos no campo correspondente."""
         apply_service_errors(self, error, {"amount_cents": "amount"})
+
+    @property
+    def installment_count(self) -> int:
+        return int(self.cleaned_data.get("installments") or 1)
 
 
 class TransactionFilterForm(forms.Form):

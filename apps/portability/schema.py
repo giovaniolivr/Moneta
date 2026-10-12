@@ -12,7 +12,7 @@ from collections.abc import Callable
 from typing import Any
 
 FORMAT = "moneta"
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 Payload = dict[str, Any]
 
@@ -31,8 +31,25 @@ def _v2_to_v3(payload: Payload) -> Payload:
     return payload
 
 
-MIGRATIONS: dict[int, Callable[[Payload], Payload]] = {1: _v1_to_v2, 2: _v2_to_v3}
-SECTIONS = ("accounts", "categories", "tags", "recurrences", "transactions")
+def _v3_to_v4(payload: Payload) -> Payload:
+    """v4: seção `installment_plans`; movimentações podem ser parcelas de uma compra."""
+    payload.setdefault("installment_plans", [])
+    return payload
+
+
+MIGRATIONS: dict[int, Callable[[Payload], Payload]] = {
+    1: _v1_to_v2,
+    2: _v2_to_v3,
+    3: _v3_to_v4,
+}
+SECTIONS = (
+    "accounts",
+    "categories",
+    "tags",
+    "recurrences",
+    "installment_plans",
+    "transactions",
+)
 
 
 class InvalidFileError(Exception):

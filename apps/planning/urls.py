@@ -18,6 +18,16 @@ urlpatterns = [
         name="recurrence_toggle",
     ),
     path(
+        "planejamento/parceladas/<uuid:pk>/",
+        views.installment_update,
+        name="installment_update",
+    ),
+    path(
+        "planejamento/parceladas/<uuid:pk>/excluir/",
+        views.installment_delete,
+        name="installment_delete",
+    ),
+    path(
         "planejamento/recorrencias/<uuid:pk>/excluir/",
         views.recurrence_delete,
         name="recurrence_delete",

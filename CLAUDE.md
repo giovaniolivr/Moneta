@@ -102,6 +102,9 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
   `planning/domain/schedule.py` (sempre a partir da data inicial). `generated_through` é o cursor:
   **nunca pode voltar** (senão ocorrências puladas reaparecem) — salve com `update_fields`. O
   formulário reaproveita `ledger/_entry_fields.html` e `ledger.views.category_groups`.
+- Parcelamento: campo `installments` do `TransactionForm` (só na criação de despesa) →
+  `create_installment_plan()`; parcelas são movimentações com `installment_plan`/`installment_number`.
+  O valor do formulário é o TOTAL (`planning/domain/installments.split`). Export no formato v4.
 - Exclusão de movimentação é desfazível: `transaction_snapshot()` vai para a sessão e a mensagem
   ganha o botão "Desfazer" (`done(..., extra_tags="undo")` → `ledger:transaction_restore`).
 - Dashboard: `?mes=AAAA-MM` escolhe um mês (navegação ◂ ▸, nunca futuro); usuário sem nenhuma

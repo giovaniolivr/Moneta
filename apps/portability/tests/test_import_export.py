@@ -18,8 +18,12 @@ from apps.ledger.services import (
     create_transaction,
     ensure_default_account,
 )
-from apps.planning.models import Recurrence
-from apps.planning.services import RecurrenceData, create_recurrence
+from apps.planning.models import InstallmentPlan, Recurrence
+from apps.planning.services import (
+    RecurrenceData,
+    create_installment_plan,
+    create_recurrence,
+)
 from apps.portability import schema
 from apps.portability.schema import InvalidFileError
 from apps.portability.selectors import export_payload
@@ -86,6 +90,20 @@ def data(user: Any) -> dict[str, Any]:
         ),
         today=timezone.localdate(),
     )
+    create_installment_plan(
+        user,
+        TransactionData(
+            kind="expense",
+            amount_cents=100_000,
+            date=D(2026, 9, 1),
+            account=card,
+            category=cats["Compras"],
+            tags=["Eletrônicos"],
+            description="Celular",
+        ),
+        count=10,
+        today=timezone.localdate(),
+    )
     set_category_archived(cats["Lazer"], archived=True)
     return {"checking": checking, "card": card, "savings": savings, "cats": cats}
 
@@ -97,6 +115,7 @@ def _without_timestamp(payload: dict[str, Any]) -> dict[str, Any]:
 def _wipe(user: Any) -> None:
     Transaction.objects.for_user(user).delete()
     Recurrence.objects.for_user(user).delete()
+    InstallmentPlan.objects.for_user(user).delete()
     TagAlias.objects.for_user(user).delete()
     Tag.objects.for_user(user).delete()
     Account.objects.for_user(user).delete()
@@ -112,6 +131,8 @@ def test_round_trip_preserves_everything(user: Any, data: Any) -> None:
     report = import_payload(user, json.loads(json.dumps(before)))
 
     assert report.recurrences.created == 1
+    assert report.installment_plans.created == 1
+    assert Transaction.objects.for_user(user).filter(installment_number=10).exists()
     assert report.transactions.created == len(before["transactions"])
     assert Transaction.objects.for_user(user).filter(recurrence__isnull=False).exists()
     assert report.accounts.created == 3
@@ -130,21 +151,25 @@ def test_import_is_idempotent(user: Any, data: Any) -> None:
     assert report.transactions.unchanged == Transaction.objects.for_user(user).count()
 
 
+def _tx(payload: dict[str, Any], day: str, cents: int) -> dict[str, Any]:
+    """Movimentação do arquivo pela data e valor (a ordem da lista não importa)."""
+    return next(
+        t for t in payload["transactions"] if t["date"] == day and t["amount_cents"] == cents
+    )
+
+
 def test_file_wins_on_update(user: Any, data: Any) -> None:
     payload = export_payload(user)
-    payload["transactions"][0]["description"] = "Salário de setembro"
-    payload["transactions"][1]["tags"] = []
+    salary, groceries = _tx(payload, "2026-09-05", 500_000), _tx(payload, "2026-09-08", 12_345)
+    salary["description"] = "Salário de setembro"
+    groceries["tags"] = []
     payload["accounts"][1]["name"] = "Cartão Nubank"
     report = import_payload(user, payload)
     assert report.transactions.updated == 2
     assert report.accounts.updated == 1
-    first = Transaction.objects.for_user(user).get(pk=payload["transactions"][0]["id"])
-    assert first.description == "Salário de setembro"
-    assert (
-        not Transaction.objects.for_user(user)
-        .get(pk=payload["transactions"][1]["id"])
-        .tags.exists()
-    )
+    mine = Transaction.objects.for_user(user)
+    assert mine.get(pk=salary["id"]).description == "Salário de setembro"
+    assert not mine.get(pk=groceries["id"]).tags.exists()
     data["card"].refresh_from_db()
     assert data["card"].name == "Cartão Nubank"
 
@@ -194,16 +219,16 @@ def test_same_name_reuses_existing_objects(user: Any) -> None:
 def test_all_or_nothing_with_every_error_listed(user: Any, data: Any) -> None:
     payload = export_payload(user)
     _wipe(user)
-    payload["transactions"][0]["amount_cents"] = 0
-    payload["transactions"][2]["date"] = "32/13/2026"
-    payload["transactions"][3]["category"] = str(uuid.uuid4())
+    _tx(payload, "2026-09-05", 500_000)["amount_cents"] = 0
+    _tx(payload, "2026-09-20", 4_000)["date"] = "32/13/2026"
+    _tx(payload, "2026-09-08", 12_345)["category"] = str(uuid.uuid4())
     with pytest.raises(ImportFailedError) as exc:
         import_payload(user, payload)
-    errors = exc.value.errors
+    errors = sorted(exc.value.errors)
     assert len(errors) == 3
-    assert errors[0].startswith("Movimentação 1 (2026-09-05): ")
-    assert "data “32/13/2026” inválida" in errors[1]
-    assert "categoria" in errors[2]
+    assert any(e.endswith("(2026-09-05): O valor deve ser maior que zero.") for e in errors)
+    assert any("data “32/13/2026” inválida" in e for e in errors)
+    assert any("(2026-09-08): categoria" in e for e in errors)
     assert Transaction.objects.for_user(user).count() == 0
     assert Account.objects.for_user(user).count() == 0  # contas válidas também não ficaram
 

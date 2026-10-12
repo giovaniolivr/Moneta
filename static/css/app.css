@@ -920,6 +920,7 @@
   /* Alternância de seções conforme o tipo escolhido. */
   .tx-form[data-kind="transfer"] [data-only="entry"],
   .tx-form:not([data-kind="transfer"]) [data-only="transfer"],
+  .tx-form:not([data-kind="expense"]) [data-only="expense"],
   .tx-form[data-kind="expense"] [data-for-kind="income"],
   .tx-form[data-kind="income"] [data-for-kind="expense"] {
     display: none;
@@ -1117,6 +1118,14 @@
   .list-item.is-muted .list-item-title,
   .list-item.is-muted .amount {
     color: var(--color-muted);
+  }
+
+  .planned-due-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
   }
 
   .list-row-with-action {

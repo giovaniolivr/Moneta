@@ -194,6 +194,19 @@ def confirm_transaction(tx: Transaction, *, today: datetime.date) -> Transaction
     return tx
 
 
+@transaction.atomic
+def confirm_due(user: User, *, today: datetime.date) -> int:
+    """Confirma de uma vez todas as previstas cuja data já chegou. Retorna quantas."""
+    due = Transaction.objects.for_user(user).filter(
+        status=TransactionStatus.PLANNED, date__lte=today
+    )
+    count = 0
+    for tx in due:
+        confirm_transaction(tx, today=today)
+        count += 1
+    return count
+
+
 def transaction_snapshot(tx: Transaction) -> dict[str, Any]:
     """Cópia serializável (JSON) de uma movimentação, para desfazer a exclusão."""
     return {
@@ -210,6 +223,8 @@ def transaction_snapshot(tx: Transaction) -> dict[str, Any]:
         "description": tx.description,
         "notes": tx.notes,
         "recurrence": str(tx.recurrence_id or ""),
+        "installment_plan": str(tx.installment_plan_id or ""),
+        "installment_number": tx.installment_number,
         "occurrence_date": tx.occurrence_date.isoformat() if tx.occurrence_date else "",
     }
 
@@ -249,6 +264,11 @@ def restore_transaction(user: User, snapshot: dict[str, Any]) -> Transaction:
         if recurrences.filter(pk=snapshot["recurrence"], owner=user).exists():
             tx.recurrence_id = uuid.UUID(snapshot["recurrence"])
             tx.occurrence_date = datetime.date.fromisoformat(snapshot["occurrence_date"])
+    if snapshot.get("installment_plan"):
+        plans = apps.get_model("planning", "InstallmentPlan")._default_manager
+        if plans.filter(pk=snapshot["installment_plan"], owner=user).exists():
+            tx.installment_plan_id = uuid.UUID(snapshot["installment_plan"])
+            tx.installment_number = snapshot["installment_number"]
     tx.full_clean()
     tx.save()
     tx.tags.set(Tag.objects.for_user(user).filter(pk__in=snapshot["tags"]))

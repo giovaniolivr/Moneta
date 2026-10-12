@@ -2,14 +2,16 @@ from typing import Any
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 
 from apps.core.forms import apply_service_errors, has_data
 from apps.core.money import NBSP, format_brl
 from apps.ledger.forms import TransactionForm
+from apps.taxonomy.models import Category, CategoryKind
 from apps.users.models import User
 
 from .domain.schedule import Frequency
-from .models import Recurrence
+from .models import InstallmentPlan, Recurrence
 from .services import RecurrenceData
 
 
@@ -32,6 +34,8 @@ class RecurrenceForm(TransactionForm):
         widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
         help_text="Deixe em branco para repetir sem data final.",
     )
+
+    installments = None  # type: ignore[assignment]  # recorrência não é parcelada
 
     def __init__(
         self, *args: Any, user: User, recurrence: Recurrence | None = None, **kwargs: Any
@@ -82,3 +86,34 @@ class RecurrenceForm(TransactionForm):
 
     def add_service_errors(self, error: ValidationError) -> None:
         apply_service_errors(self, error, {"amount_cents": "amount", "start_date": "date"})
+
+
+class InstallmentPlanForm(forms.Form):
+    """O que dá para mudar numa compra parcelada (vale para todas as parcelas)."""
+
+    description = forms.CharField(label="Descrição", max_length=120)
+    category = forms.ModelChoiceField(
+        label="Categoria", queryset=Category.objects.none(), empty_label=None
+    )
+    tags = forms.CharField(label="Tags", required=False, max_length=500)
+    notes = forms.CharField(
+        label="Observações", required=False, widget=forms.Textarea(attrs={"rows": 2})
+    )
+
+    def __init__(self, *args: Any, user: User, plan: InstallmentPlan, **kwargs: Any) -> None:
+        if "initial" not in kwargs and not has_data(args, kwargs):
+            kwargs["initial"] = {
+                "description": plan.description,
+                "category": plan.category_id,
+                "tags": ", ".join(t.name for t in plan.tags.all()),
+                "notes": plan.notes,
+            }
+        super().__init__(*args, **kwargs)
+        self.fields["category"].queryset = Category.objects.for_user(user).filter(  # type: ignore[attr-defined]
+            Q(kind=CategoryKind.EXPENSE, is_archived=False) | Q(pk=plan.category_id)
+        )
+        for field in self.fields.values():
+            field.widget.attrs.setdefault("class", "input")
+
+    def tag_names(self) -> list[str]:
+        return [n for n in self.cleaned_data.get("tags", "").split(",") if n.strip()]

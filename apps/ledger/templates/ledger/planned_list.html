@@ -22,7 +22,14 @@
       <span class="text-sm muted">Data já chegou</span>
     </div>
     {% if due %}
-      <p class="text-sm muted mb-4">Confirme como está ou toque para ajustar valor e data antes.</p>
+      <div class="planned-due-actions mb-4">
+        <p class="text-sm muted">Confirme como está ou toque para ajustar valor e data antes.</p>
+        {% if due|length > 1 %}
+          <form method="post" action="{% url 'ledger:planned_confirm_due' %}">
+            {% csrf_token %}<button class="btn btn-secondary btn-sm" type="submit">Confirmar todas ({{ due|length }})</button>
+          </form>
+        {% endif %}
+      </div>
       <ul class="list">
         {% for tx in due %}{% include "components/transaction_row.html" with show_date=True confirmable=True %}{% endfor %}
       </ul>

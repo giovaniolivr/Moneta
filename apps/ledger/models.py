@@ -130,6 +130,16 @@ class Transaction(OwnedModel):
         verbose_name="recorrência",
     )
     occurrence_date = models.DateField("data da ocorrência", null=True, blank=True)
+    # Parcela de uma compra parcelada (número 1..N).
+    installment_plan = models.ForeignKey(
+        "planning.InstallmentPlan",
+        on_delete=models.SET_NULL,
+        related_name="transactions",
+        null=True,
+        blank=True,
+        verbose_name="compra parcelada",
+    )
+    installment_number = models.PositiveSmallIntegerField("parcela", null=True, blank=True)
 
     class Meta:
         verbose_name = "movimentação"
@@ -160,6 +170,12 @@ class Transaction(OwnedModel):
                 condition=models.Q(recurrence__isnull=False),
                 name="transaction_unique_occurrence",
                 violation_error_message="Esta ocorrência da recorrência já existe.",
+            ),
+            models.UniqueConstraint(
+                fields=["installment_plan", "installment_number"],
+                condition=models.Q(installment_plan__isnull=False),
+                name="transaction_unique_installment",
+                violation_error_message="Esta parcela já existe.",
             ),
             models.CheckConstraint(
                 condition=(

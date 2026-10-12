@@ -24,7 +24,7 @@ from django.db import models, transaction
 
 from apps.core.names import InvalidNameError, clean_display_name, normalize_name
 from apps.ledger.models import Account, Transaction
-from apps.planning.models import Recurrence
+from apps.planning.models import InstallmentPlan, Recurrence
 from apps.taxonomy.models import Category, Tag
 from apps.taxonomy.services import add_tag_alias
 from apps.users.models import User
@@ -35,7 +35,7 @@ MAX_FILE_BYTES = 20 * 1024 * 1024
 MAX_ERRORS = 50
 
 _N = TypeVar("_N", Account, Category, Tag)
-_R = TypeVar("_R", Account, Category, Tag, Recurrence)
+_R = TypeVar("_R", Account, Category, Tag, Recurrence, InstallmentPlan)
 Item = dict[str, Any]
 
 
@@ -56,6 +56,7 @@ class ImportReport:
     categories: Counts = field(default_factory=Counts)
     tags: Counts = field(default_factory=Counts)
     recurrences: Counts = field(default_factory=Counts)
+    installment_plans: Counts = field(default_factory=Counts)
     transactions: Counts = field(default_factory=Counts)
 
     def sections(self) -> list[tuple[str, Counts]]:
@@ -64,6 +65,7 @@ class ImportReport:
             ("Categorias", self.categories),
             ("Tags", self.tags),
             ("Recorrências", self.recurrences),
+            ("Compras parceladas", self.installment_plans),
             ("Movimentações", self.transactions),
         ]
 
@@ -119,6 +121,7 @@ class _Importer:
         self.categories: dict[uuid.UUID, Category] = {}
         self.tags: dict[uuid.UUID, Tag] = {}
         self.recurrences: dict[uuid.UUID, Recurrence] = {}
+        self.plans: dict[uuid.UUID, InstallmentPlan] = {}
 
     # ───── Utilitários ─────
 
@@ -132,6 +135,8 @@ class _Importer:
                 raise self.error(where, f"campo “{key}” ausente.")
             return default
         value = item[key]
+        if value is None and default is None:
+            return None  # campo opcional exportado como null
         if kind is int and isinstance(value, bool):
             raise self.error(where, f"campo “{key}” deveria ser um número inteiro.")
         if not isinstance(value, kind):
@@ -224,6 +229,9 @@ class _Importer:
         self.each(self.items(payload, "categories", "Categoria"), self.category)
         self.each(self.items(payload, "tags", "Tag"), self.tag)
         self.each(self.items(payload, "recurrences", "Recorrência"), self.recurrence)
+        self.each(
+            self.items(payload, "installment_plans", "Compra parcelada"), self.installment_plan
+        )
         self.each(self.items(payload, "transactions", "Movimentação"), self.movement)
 
     def account(self, where: str, item: Item) -> None:
@@ -309,7 +317,7 @@ class _Importer:
 
     def upsert_by_id(
         self,
-        model: type[Transaction] | type[Recurrence],
+        model: type[Transaction] | type[Recurrence] | type[InstallmentPlan],
         pk: uuid.UUID,
         values: Item,
         tags: set[Tag],
@@ -347,6 +355,32 @@ class _Importer:
         obj = self.upsert_by_id(Recurrence, pk, values, tags, self.report.recurrences, where)
         self.recurrences[pk] = obj
 
+    def installment_plan(self, where: str, item: Item) -> None:
+        pk = self.uuid_field(item, "id", where)
+        if self.owned_by_other(InstallmentPlan, pk):
+            raise self.error(where, "o identificador pertence a outro usuário deste servidor.")
+        account = self.ref(self.accounts, Account, item, "account", where, "conta")
+        category = self.ref(self.categories, Category, item, "category", where, "categoria")
+        if account is None or category is None:
+            raise self.error(where, "conta e categoria são obrigatórias.")
+        tags = {
+            tag
+            for raw in self.field(item, "tags", where, list, default=[])
+            if (tag := self.ref(self.tags, Tag, {"tag": raw}, "tag", where, "tag")) is not None
+        }
+        values: Item = {
+            "description": self.field(item, "description", where, str),
+            "total_cents": self.field(item, "total_cents", where, int),
+            "count": self.field(item, "count", where, int),
+            "purchase_date": self.date_field(item, "purchase_date", where),
+            "account": account,
+            "category": category,
+            "payment_method": self.field(item, "payment_method", where, str, default=""),
+            "notes": self.field(item, "notes", where, str, default=""),
+        }
+        counts = self.report.installment_plans
+        self.plans[pk] = self.upsert_by_id(InstallmentPlan, pk, values, tags, counts, where)
+
     def optional_date(self, item: Item, key: str, where: str) -> datetime.date | None:
         return None if item.get(key) is None else self.date_field(item, key, where)
 
@@ -363,5 +397,9 @@ class _Importer:
                 self.recurrences, Recurrence, item, "recurrence", where, "recorrência"
             ),
             "occurrence_date": self.optional_date(item, "occurrence_date", where),
+            "installment_plan": self.ref(
+                self.plans, InstallmentPlan, item, "installment_plan", where, "compra parcelada"
+            ),
+            "installment_number": self.field(item, "installment_number", where, int, default=None),
         }
         self.upsert_by_id(Transaction, pk, values, tags, self.report.transactions, where)

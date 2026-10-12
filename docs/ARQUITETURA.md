@@ -452,7 +452,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 |---|---------|---------------|
 | 14 ✅ | Movimentações **previstas × realizadas** (`status`), lista "Previstas", "A confirmar" | análises/saldos só com realizadas; data futura só em prevista |
 | 15 ✅ | Recorrências (`apps/planning`): mensal/semanal/anual, gera previstas num horizonte | confirmar/ajustar/pular; idempotente |
-| 16 | Parcelamentos no cartão: compra em N× gera N parcelas previstas | cada parcela conta no seu mês |
+| 16 ✅ | Parcelamentos no cartão: compra em N× gera N parcelas previstas | cada parcela conta no seu mês |
 | 17 | Orçamentos mensais por categoria + ritmo pro-rata + insight | alerta só com evidência |
 | 18 | Projeção de saldo por conta e fatura prevista do cartão | projeção usa só previstas confirmáveis |
 | 19 | Metas (`apps/goals`) sobre o saldo de uma conta | aporte mensal necessário vs. capacidade de poupança |
@@ -499,7 +499,8 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 
 **Tomadas para a Fase 2 (2026-10-12)**
 11. Parcelamento: **cada parcela conta no mês da própria parcela** (R$ 1.200 em 12× = R$ 100/mês);
-    a compra fica agrupada num plano de parcelamento.
+    a compra fica agrupada num plano de parcelamento. Centavos que sobram vão na 1ª parcela.
+    Parcelas com data até hoje nascem realizadas (a compra aconteceu); as futuras, previstas.
 12. Recorrências e parcelas viram **previstas**; só entram nas análises quando o usuário
     **confirma** (pode ajustar valor/data ou pular). Nada é lançado sozinho.
 13. Metas medem o progresso pelo **saldo de uma conta** (ex.: Caixinha); aportes são as
