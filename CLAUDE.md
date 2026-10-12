@@ -4,21 +4,41 @@ Plataforma de gestão e planejamento financeiro pessoal. Uso próprio no início
 virar multiusuário e ganhar clientes web/mobile. Idioma do produto e da documentação: pt-BR.
 Código (identificadores) em inglês.
 
-**Status:** Fases 1, 2 e 3 (entregas 0–28) concluídas; PWA/mobile adiado para a etapa de uso real. Seguir o roadmap da §10 de
+**Status:** Fases 1, 2 e 3 (entregas 0–28) concluídas; preparo para uso real (PWA, waitress, scripts)
+pronto — falta configurar o Tailscale com o usuário (ver "PRÓXIMA SESSÃO"). Seguir o roadmap da §10 de
 `docs/ARQUITETURA.md`, uma entrega por vez.
 
-## Pendência: configurar o uso real (fazer junto com o usuário, quando ele pedir)
-O usuário ainda não configurou o app para dados reais. Quando ele quiser começar a usar, guiar
-passo a passo (sem ler nem exibir o conteúdo de `.env`; ele cola os valores):
-1. `.env` a partir de `.env.example`; gerar `DJANGO_SECRET_KEY` nova (comando no arquivo).
-2. `DATABASE_URL=sqlite:///db.sqlite3` → `migrate` → `createsuperuser` (seu usuário/senha).
-3. Decidir `DEV_AUTO_LOGIN` (com dados reais, provavelmente `0`) e `DEV_AUTO_LOGIN_USERNAME`.
-4. Agendar `manage.py backup` no Agendador de Tarefas do Windows (diário) e testar um restore
-   (`manage.py restaurar_backup <arquivo> --confirmar`, guarda o banco atual antes).
-5. Fazer um export JSON inicial e conferir que `db.sqlite3`/`.env`/`backups/` seguem fora do git.
-Mobile/PWA também fica para essa etapa ("usar o app em si").
+## PRÓXIMA SESSÃO: retomar a configuração do uso real (estado em 2026-10-12)
+Ao iniciar, resuma ao usuário onde paramos (abaixo) e peça o que falta dele. Guiar passo a passo,
+**sem ler nem exibir o `.env`** (ele cola os valores). Roteiro completo no README, "Uso real".
+
+**Já feito:**
+- Infra pronta e no `origin/main` (`ac89979`): perfil `config.settings.personal` (banco
+  `db.sqlite3`, DEBUG off, waitress), `scripts/serve.ps1`, `scripts/backup.ps1`, PWA
+  (manifest/service worker/offline), `MONETA_HOSTS` no `.env.example`.
+- Banco real `db.sqlite3` migrado (40 migrações, integridade ok); backup feito antes em
+  `backups/db-20261012-183516.sqlite3`.
+- O usuário do banco real é o **superusuário que já existe** (o usuário sabe login e senha —
+  não precisa `createsuperuser`).
+
+**Falta (nesta ordem):**
+1. **Tailscale** — o usuário vai instalar no PC e no celular (mesma conta) e informar o nome da
+   máquina (`<pc>.<tailnet>.ts.net`). Ele coloca `MONETA_HOSTS=<esse nome>` no `.env`; conferir
+   com ele que o `.env` tem `DJANGO_SECRET_KEY` própria e `DEV_AUTO_LOGIN=0`.
+2. Subir: `powershell -File scripts/serve.ps1` e, no PC, `tailscale serve --bg 8000`. Testar no PC
+   (`http://127.0.0.1:8000`, login com o superusuário) e no celular
+   (`https://<pc>.<tailnet>.ts.net`) → "Adicionar à tela inicial" (PWA).
+3. Agendador de Tarefas do Windows: `scripts/serve.ps1` ao fazer logon; `scripts/backup.ps1`
+   diário (ex.: 22h). Testar um restore (`manage.py restaurar_backup <arquivo>` e depois
+   `--confirmar`, com o servidor parado; ele guarda o banco atual antes).
+4. Export JSON inicial (tela Dados) e conferir que `db.sqlite3`/`.env`/`backups/` seguem fora do git.
+5. Polimento de hover/animações (abaixo) — prioridade logo após a configuração.
 6. Entrega 30 (coletor do Mercado Livre, API oficial com OAuth): criar o app no portal de
    desenvolvedores do ML com o usuário, credenciais no `.env`, validar contra a API real.
+
+**Fora do Moneta, já concluído nesta data:** guia de estudos em PDF
+(`../Guia de Estudos - Moneta, W8T, Desktop Wiki e Portfólio.pdf`, gerado por script no scratchpad)
+e card "Work in Progress" do Moneta no portfólio (`../portfolio`, publicado; `venv/` removido do git).
 Polimentos (inclusive a entrega 33) ficam para quando a base do projeto estiver pronta.
 **Polimento pedido pelo usuário (prioridade logo após a configuração):** efeitos de hover em
 ícones e painéis (cards, linhas de lista, botões) — destaque visível + uma animação sutil a mais,
