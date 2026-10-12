@@ -228,6 +228,7 @@ class _Importer:
 
     def run(self, payload: Payload) -> None:
         self.each(self.items(payload, "accounts", "Conta"), self.account)
+        self.each(self.items(payload, "accounts", "Conta"), self.account_billing)
         self.each(self.items(payload, "categories", "Categoria"), self.category)
         self.each(self.items(payload, "tags", "Tag"), self.tag)
         self.each(self.items(payload, "recurrences", "Recorrência"), self.recurrence)
@@ -247,6 +248,29 @@ class _Importer:
         }
         obj = self.upsert_named(Account, where, item, values, self.report.accounts)
         self.accounts[file_id] = obj
+
+    def account_billing(self, where: str, item: Item) -> None:
+        """2ª passada: a conta pagadora pode aparecer depois do cartão no arquivo."""
+        account = self.accounts.get(self.uuid_field(item, "id", where))
+        if account is None:
+            return
+        values = {
+            "statement_closing_day": self.field(
+                item, "statement_closing_day", where, int, default=None
+            ),
+            "payment_due_day": self.field(item, "payment_due_day", where, int, default=None),
+            "payment_account": self.ref(
+                self.accounts, Account, item, "payment_account", where, "conta pagadora"
+            ),
+        }
+        if any(getattr(account, k) != v for k, v in values.items()):
+            for k, v in values.items():
+                setattr(account, k, v)
+            try:
+                account.full_clean()
+            except ValidationError as exc:
+                raise self.error(where, _messages(exc)) from None
+            account.save()
 
     def category(self, where: str, item: Item) -> None:
         file_id = self.uuid_field(item, "id", where)

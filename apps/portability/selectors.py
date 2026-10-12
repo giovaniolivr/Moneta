@@ -51,6 +51,9 @@ def export_payload(user: UserLike) -> Payload:
             "opening_balance_cents": a.opening_balance_cents,
             "opening_date": a.opening_date.isoformat(),
             "is_archived": a.is_archived,
+            "statement_closing_day": a.statement_closing_day,
+            "payment_due_day": a.payment_due_day,
+            "payment_account": _str(a.payment_account_id),
         }
         for a in Account.objects.for_user(user).order_by("created_at", "pk")
     ]

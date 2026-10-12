@@ -37,6 +37,25 @@
   </div>
   <p class="field-help">{{ form.opening_date.help_text }}</p>
 
+  <fieldset class="field" data-only-kind="credit_card">
+    <legend>Fatura</legend>
+    <div class="form-row">
+      {% for field in form %}{% if field.name == "closing_day" or field.name == "due_day" %}
+        <div class="field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}{% endfor %}
+    </div>
+    <div class="field">
+      <label for="{{ form.payment_account.id_for_label }}">{{ form.payment_account.label }}</label>
+      {{ form.payment_account }}
+      {% for error in form.payment_account.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+    </div>
+    <p class="field-help">Com os três preenchidos, o Moneta prevê a fatura e desconta o pagamento da conta pagadora na projeção de saldo. Dia 31 = último dia do mês.</p>
+  </fieldset>
+
   <div class="form-actions form-actions-single">
     <button class="btn btn-primary" type="submit">{% if account %}Salvar alterações{% else %}Criar conta{% endif %}</button>
   </div>

@@ -31,6 +31,22 @@ def _validated_save(account: Account) -> Account:
     return account
 
 
+@dataclass(frozen=True)
+class CardBilling:
+    """Fechamento/vencimento (dia do mês; 31 = último dia) e conta que paga a fatura."""
+
+    closing_day: int | None = None
+    due_day: int | None = None
+    payment_account: Account | None = None
+
+
+def _apply_billing(account: Account, billing: CardBilling | None) -> None:
+    if billing is not None:
+        account.statement_closing_day = billing.closing_day
+        account.payment_due_day = billing.due_day
+        account.payment_account = billing.payment_account
+
+
 def create_account(
     user: User,
     *,
@@ -38,10 +54,12 @@ def create_account(
     kind: AccountKind | str,
     opening_balance_cents: int = 0,
     opening_date: datetime.date | None = None,
+    billing: CardBilling | None = None,
 ) -> Account:
     account = Account(owner=user, name=name, kind=kind, opening_balance_cents=opening_balance_cents)
     if opening_date is not None:
         account.opening_date = opening_date
+    _apply_billing(account, billing)
     return _validated_save(account)
 
 
@@ -51,8 +69,10 @@ def update_account(
     name: str | None = None,
     opening_balance_cents: int | None = None,
     opening_date: datetime.date | None = None,
+    billing: CardBilling | None = None,
 ) -> Account:
     """O tipo da conta não muda depois de criada: alteraria o significado do histórico."""
+    _apply_billing(account, billing)
     if name is not None:
         account.name = name
     if opening_balance_cents is not None:

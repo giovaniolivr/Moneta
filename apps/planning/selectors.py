@@ -15,9 +15,11 @@ from apps.analytics.domain.periods import (
     month_start,
     months_between,
 )
-from apps.ledger.models import TransactionStatus
+from apps.ledger.models import Account, Transaction, TransactionKind, TransactionStatus
+from apps.ledger.selectors import account_balances
 
 from .domain.budget import BudgetProgress, progress, typical_fraction
+from .domain.projection import Billing, Event, PendingPayment, Projection, project
 from .models import Budget, InstallmentPlan, Recurrence
 
 UserLike = AbstractBaseUser | AnonymousUser
@@ -112,3 +114,80 @@ def budget_rows(user: UserLike, month: datetime.date, today: datetime.date) -> l
     ]
     rows.sort(key=lambda r: (r.budget.category_id is not None, -(r.progress.used_pct or 0)))
     return rows
+
+
+# Projeção de saldo -------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ProjectionData:
+    projection: Projection
+    accounts: list[Account]  # na ordem de exibição (cartões por último)
+    unconfigured_cards: list[Account]  # cartões sem fechamento/vencimento/pagadora
+
+
+def _planned_events(user: UserLike, end: datetime.date) -> list[Event]:
+    events: list[Event] = []
+    planned = Transaction.objects.for_user(user).filter(
+        status=TransactionStatus.PLANNED, date__lte=end
+    )
+    for tx in planned.only("kind", "amount_cents", "date", "account", "destination_account"):
+        if tx.kind == TransactionKind.INCOME:
+            events.append(Event(tx.date, tx.account_id, tx.amount_cents))
+        elif tx.kind == TransactionKind.EXPENSE:
+            events.append(Event(tx.date, tx.account_id, -tx.amount_cents))
+        elif tx.destination_account_id is not None:
+            events.append(Event(tx.date, tx.account_id, -tx.amount_cents))
+            events.append(Event(tx.date, tx.destination_account_id, tx.amount_cents))
+    return events
+
+
+def _pending_payment(
+    user: UserLike, billing: Billing, today: datetime.date
+) -> PendingPayment | None:
+    """Fatura já fechada cujo vencimento ainda não passou: quanto falta pagar."""
+    closing = billing.last_closing_before(today)
+    due = billing.due_for(closing)
+    if due < today:
+        return None
+    owed = max(0, -account_balances(user, on=closing).get(billing.card_id, 0))
+    paid = (
+        Transaction.objects.for_user(user)
+        .filter(
+            status=TransactionStatus.POSTED,
+            kind=TransactionKind.TRANSFER,
+            destination_account_id=billing.card_id,
+            date__gt=closing,
+            date__lte=today,
+        )
+        .aggregate(total=Sum("amount_cents"))["total"]
+        or 0
+    )
+    return PendingPayment(billing.card_id, closing, due, max(0, owed - paid))
+
+
+def projection_data(user: UserLike, today: datetime.date, *, days: int = 92) -> ProjectionData:
+    end = today + datetime.timedelta(days=days)
+    opening = account_balances(user, on=today)
+    accounts = [
+        a
+        for a in Account.objects.for_user(user).select_related("payment_account")
+        if not a.is_archived or opening.get(a.pk, 0) != 0
+    ]
+    accounts.sort(key=lambda a: (a.is_liability, a.name.lower()))
+    billings = [
+        Billing(a.pk, a.payment_account_id, a.statement_closing_day, a.payment_due_day)  # type: ignore[arg-type]
+        for a in accounts
+        if a.has_billing
+    ]
+    pending = [p for b in billings if (p := _pending_payment(user, b, today)) is not None]
+    projection = project(
+        today=today,
+        end=end,
+        opening={a.pk: opening.get(a.pk, 0) for a in accounts},
+        events=_planned_events(user, end),
+        billings=billings,
+        pending=pending,
+    )
+    unconfigured = [a for a in accounts if a.is_liability and not a.has_billing]
+    return ProjectionData(projection, accounts, unconfigured)

@@ -208,7 +208,8 @@
   // ── Linhas acumuladas com cursor vertical (ex.: ritmo de gastos do mês) ──
   function lines(container, data, width) {
     const all = data.series.flatMap((s) => s.values);
-    const { lo, hi, ticks } = niceScale(0, Math.max(...all, 1));
+    // Saldos projetados podem ficar negativos: o eixo inclui o mínimo (ou zero).
+    const { lo, hi, ticks } = niceScale(Math.min(0, ...all), Math.max(...all, 1));
     const yOf = (v) => TOP + PLOT_HEIGHT - ((v - lo) / (hi - lo)) * PLOT_HEIGHT;
     const svg = frame(container, ticks, yOf, width);
     const count = data.labels.length;

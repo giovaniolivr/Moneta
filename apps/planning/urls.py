@@ -6,6 +6,7 @@ app_name = "planning"
 
 urlpatterns = [
     path("planejamento/", views.index, name="index"),
+    path("planejamento/projecao/", views.projection, name="projection"),
     path("planejamento/recorrencias/nova/", views.recurrence_create, name="recurrence_create"),
     path("planejamento/orcamentos/novo/", views.budget_create, name="budget_create"),
     path("planejamento/orcamentos/<uuid:pk>/", views.budget_update, name="budget_update"),

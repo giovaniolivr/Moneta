@@ -17,8 +17,22 @@ from apps.taxonomy.models import Category
 from apps.users.models import User
 
 from .filters import month_bounds
-from .models import Account, AccountKind, PaymentMethod, TransactionKind
-from .services import TransactionData, create_account, create_transaction, ensure_default_account
+from .models import (
+    Account,
+    AccountKind,
+    PaymentMethod,
+    Transaction,
+    TransactionKind,
+    TransactionStatus,
+)
+from .services import (
+    CardBilling,
+    TransactionData,
+    create_account,
+    create_transaction,
+    ensure_default_account,
+    update_account,
+)
 
 DEMO_USERNAME = "demo"
 DEMO_PASSWORD = "demo-moneta"  # noqa: S105 — só para o banco local de demonstração
@@ -349,7 +363,9 @@ def seed_demo(
 
     _seed_recurrences(user, cat, today=today, start=start, accounts=(checking, card, savings))
     _seed_budgets(user, cat)
-    return DemoSummary(accounts=4, transactions=count, first_date=start, last_date=today)
+    _seed_card(user, cat, today=today, card=card, checking=checking)
+    realized = Transaction.objects.for_user(user).filter(status=TransactionStatus.POSTED).count()
+    return DemoSummary(accounts=4, transactions=realized, first_date=start, last_date=today)
 
 
 def _seed_recurrences(
@@ -400,3 +416,28 @@ def _seed_budgets(user: User, cat: dict[str, Category]) -> None:
     create_budget(user, category=None, amount_cents=600_000)
     for name, cents in (("Alimentação", 150_000), ("Lazer", 40_000), ("Transporte", 60_000)):
         create_budget(user, category=cat[name], amount_cents=cents)
+
+
+def _seed_card(
+    user: User, cat: dict[str, Category], *, today: datetime.date, card: Account, checking: Account
+) -> None:
+    """Fatura fecha no último dia do mês e vence no dia 10 (como o histórico gerado acima) e uma
+    compra parcelada feita neste mês — a 1ª parcela entra na fatura que ainda vai fechar."""
+    from apps.planning.services import create_installment_plan
+
+    update_account(card, billing=CardBilling(closing_day=31, due_day=10, payment_account=checking))
+    create_installment_plan(
+        user,
+        TransactionData(
+            kind=TransactionKind.EXPENSE,
+            amount_cents=420_000,
+            date=max(today - datetime.timedelta(days=2), today.replace(day=11)),
+            account=card,
+            category=cat["Compras"],
+            tags=("Eletrônicos",),
+            payment_method=PaymentMethod.CREDIT,
+            description="Notebook",
+        ),
+        count=10,
+        today=today,
+    )

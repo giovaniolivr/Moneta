@@ -33,7 +33,8 @@ def test_generates_months_of_plausible_data() -> None:
     planned = Transaction.objects.for_user(user).filter(status=TransactionStatus.PLANNED)
     assert planned.exists()
     assert not planned.filter(date__lt=TODAY).exists()
-    assert not planned.filter(recurrence__isnull=True).exists()
+    assert not planned.filter(recurrence__isnull=True, installment_plan__isnull=True).exists()
+    assert planned.filter(installment_plan__isnull=False).exists()  # compra parcelada no cartão
     assert txs.filter(kind=TransactionKind.TRANSFER).exists()
     assert user.is_superuser
 

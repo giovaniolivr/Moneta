@@ -13,10 +13,12 @@ from apps.analytics import selectors as analytics
 from apps.ledger.models import Account, AccountKind, Transaction
 from apps.ledger.selectors import account_balances
 from apps.ledger.services import (
+    CardBilling,
     TransactionData,
     create_account,
     create_transaction,
     ensure_default_account,
+    update_account,
 )
 from apps.planning.models import Budget, InstallmentPlan, Recurrence
 from apps.planning.services import (
@@ -42,6 +44,7 @@ def data(user: Any) -> dict[str, Any]:
     card = create_account(
         user, name="Cartão", kind=AccountKind.CREDIT_CARD, opening_date=D(2026, 1, 1)
     )
+    update_account(card, billing=CardBilling(closing_day=31, due_day=10, payment_account=checking))
     savings = create_account(
         user, name="Caixinha", kind=AccountKind.SAVINGS, opening_balance_cents=100_000
     )

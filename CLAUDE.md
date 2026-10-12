@@ -108,6 +108,8 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
 - Orçamentos: `planning/domain/budget.py` (puro) + `planning.selectors.budget_rows()`. A regra
   `BudgetRule` (analytics) recebe `BudgetSignal`s injetados pela view da dashboard
   (`build_dashboard(..., budget_signals=)`) — o `analytics` não importa o `planning`.
+- Projeção: `planning/domain/projection.py` (simulação pura dia a dia) +
+  `planning.selectors.projection_data()`. Faturas nunca viram movimentações gravadas.
 - Exclusão de movimentação é desfazível: `transaction_snapshot()` vai para a sessão e a mensagem
   ganha o botão "Desfazer" (`done(..., extra_tags="undo")` → `ledger:transaction_restore`).
 - Dashboard: `?mes=AAAA-MM` escolhe um mês (navegação ◂ ▸, nunca futuro); usuário sem nenhuma

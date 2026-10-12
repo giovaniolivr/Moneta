@@ -55,7 +55,7 @@ pytest · ruff · mypy (strict)
 - [x] 15. Recorrências (mensal, semanal, anual, a cada N): geram previstas para ~3 meses; editar, pausar, pular e excluir sem tocar no histórico confirmado
 - [x] 16. Compras parceladas (2× a 48×) direto no formulário: cada parcela no seu mês, futuras previstas, "Confirmar todas" em A confirmar
 - [x] 17. Orçamentos mensais (por categoria ou do total) com ritmo pelo seu próprio padrão de gasto, projeção do mês e alerta nas Análises
-- [ ] 18. Projeção de saldo e fatura prevista
+- [x] 18. Projeção de saldo dia a dia por conta, faturas previstas do cartão (fechamento, vencimento, conta pagadora) e alerta de saldo negativo
 - [ ] 19. Metas sobre o saldo de uma conta
 - [ ] 20. Dashboard realizado × previsto
 

@@ -288,6 +288,11 @@ def transaction_list(request: AuthenticatedHttpRequest) -> HttpResponse:
 # Contas ------------------------------------------------------------------------
 
 ACCOUNTS = "ledger:account_list"
+BILLING_ERRORS: dict[str, str | None] = {
+    "opening_balance_cents": "opening_balance",
+    "statement_closing_day": "closing_day",
+    "payment_due_day": "due_day",
+}
 
 
 def account_list(request: AuthenticatedHttpRequest) -> HttpResponse:
@@ -323,7 +328,7 @@ def _account_drawer(
 
 @require_http_methods(["GET", "POST"])
 def account_create(request: AuthenticatedHttpRequest) -> HttpResponse:
-    form = AccountForm(request.POST or None)
+    form = AccountForm(request.POST or None, user=request.user)
     if request.method == "POST" and form.is_valid():
         data = form.cleaned_data
         try:
@@ -333,9 +338,10 @@ def account_create(request: AuthenticatedHttpRequest) -> HttpResponse:
                 kind=data["kind"],
                 opening_balance_cents=form.opening_balance_cents(),
                 opening_date=data["opening_date"],
+                billing=form.billing(),
             )
         except ValidationError as error:
-            apply_service_errors(form, error, {"opening_balance_cents": "opening_balance"})
+            apply_service_errors(form, error, BILLING_ERRORS)
         else:
             return done(request, f"Conta “{account}” criada.", fallback=ACCOUNTS)
     return _account_drawer(request, form)
@@ -353,9 +359,10 @@ def account_update(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpResp
                 name=data["name"],
                 opening_balance_cents=form.opening_balance_cents(),
                 opening_date=data["opening_date"],
+                billing=form.billing(),
             )
         except ValidationError as error:
-            apply_service_errors(form, error, {"opening_balance_cents": "opening_balance"})
+            apply_service_errors(form, error, BILLING_ERRORS)
         else:
             return done(request, f"Conta “{account}” atualizada.", fallback=ACCOUNTS)
     return _account_drawer(request, form, account=account)

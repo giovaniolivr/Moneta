@@ -454,7 +454,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 15 ✅ | Recorrências (`apps/planning`): mensal/semanal/anual, gera previstas num horizonte | confirmar/ajustar/pular; idempotente |
 | 16 ✅ | Parcelamentos no cartão: compra em N× gera N parcelas previstas | cada parcela conta no seu mês |
 | 17 ✅ | Orçamentos mensais por categoria + ritmo pro-rata + insight | alerta só com evidência |
-| 18 | Projeção de saldo por conta e fatura prevista do cartão | projeção usa só previstas confirmáveis |
+| 18 ✅ | Projeção de saldo por conta e fatura prevista do cartão | projeção usa só previstas confirmáveis |
 | 19 | Metas (`apps/goals`) sobre o saldo de uma conta | aporte mensal necessário vs. capacidade de poupança |
 | 20 | Dashboard realizado × previsto + polimento | |
 
@@ -507,6 +507,10 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
     aquele dia** nos meses completos anteriores (até 3), não uma reta — gastos fixos do começo do
     mês não geram alarme falso. Sem 2 meses de histórico, usa a reta e declara isso. Projeção só
     a partir do 7º dia; "ritmo acima" exige excesso projetado ≥ R$ 20.
+15. Fatura prevista e projeção: cartão tem fechamento/vencimento/conta pagadora. A fatura é o
+    saldo devedor no fechamento (menos o já pago depois dele); na projeção, ela sai da conta
+    pagadora no vencimento. Faturas são **calculadas, nunca gravadas**. A projeção simula só as
+    previstas (vencidas contam como hoje) — gastos variáveis ficam de fora e isso é declarado.
 13. Metas medem o progresso pelo **saldo de uma conta** (ex.: Caixinha); aportes são as
     transferências que o usuário já faz.
 

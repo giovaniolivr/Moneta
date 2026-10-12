@@ -1,3 +1,4 @@
+import datetime
 import uuid
 from typing import Any
 
@@ -8,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
+from apps.analytics.domain.periods import add_months, month_end, month_start
 from apps.core.drawer import done, render_drawer
 from apps.core.forms import apply_service_errors
 from apps.core.http import AuthenticatedHttpRequest
@@ -17,7 +19,13 @@ from apps.ledger.views import category_groups
 
 from .forms import BudgetForm, InstallmentPlanForm, RecurrenceForm
 from .models import Budget, Recurrence
-from .selectors import budget_rows, list_budgets, list_installment_plans, list_recurrences
+from .selectors import (
+    budget_rows,
+    list_budgets,
+    list_installment_plans,
+    list_recurrences,
+    projection_data,
+)
 from .services import (
     create_budget,
     create_recurrence,
@@ -211,3 +219,68 @@ def budget_delete(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpRespo
     label = budget.label
     delete_budget(budget)
     return done(request, f"Orçamento de “{label}” excluído.", fallback=INDEX)
+
+
+def projection(request: AuthenticatedHttpRequest) -> HttpResponse:
+    """Saldo previsto por conta (fim de cada mês), alertas de saldo negativo e faturas."""
+    today = timezone.localdate()
+    materialize(request.user, today=today)
+    data = projection_data(request.user, today)
+    proj = data.projection
+    end = proj.days[-1]
+    checkpoints = [today]
+    month = today
+    while (month_last := month_end(month)) <= end:
+        if month_last != today:
+            checkpoints.append(month_last)
+        month = add_months(month_start(month), 1)
+
+    rows = [
+        {"account": a, "values": [proj.balance_on(a.pk, d) for d in checkpoints]}
+        for a in data.accounts
+    ]
+    in_accounts = [a for a in data.accounts if not a.is_liability]
+
+    def total(accounts: list[Any], d: datetime.date) -> int:
+        return sum(proj.balance_on(a.pk, d) for a in accounts)
+
+    alerts = []
+    for account in in_accounts:
+        first = proj.first_negative(account.pk)
+        if first is not None:
+            low_day, low = proj.lowest(account.pk)
+            alerts.append({"account": account, "first": first, "low_day": low_day, "low": low})
+    names = {a.pk: a for a in data.accounts}
+    chart = {
+        "labels": [f"{d:%d/%m}" for d in proj.days],
+        "series": [
+            {
+                "key": "previous",
+                "label": "Saldo líquido (com cartões)",
+                "values": [total(data.accounts, d) for d in proj.days],
+            },
+            {
+                "key": "current",
+                "label": "Em contas (sem cartões)",
+                "values": [total(in_accounts, d) for d in proj.days],
+            },
+        ],
+    }
+    return render(
+        request,
+        "planning/projection.html",
+        {
+            "checkpoints": checkpoints,
+            "rows": rows,
+            "totals": {
+                "accounts": [total(in_accounts, d) for d in checkpoints],
+                "net": [total(data.accounts, d) for d in checkpoints],
+            },
+            "alerts": alerts,
+            "statements": [(names[s.card_id], s) for s in proj.statements],
+            "unconfigured_cards": data.unconfigured_cards,
+            "chart": chart,
+            "end": end,
+            "today": today,
+        },
+    )

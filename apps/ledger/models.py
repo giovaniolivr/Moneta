@@ -33,6 +33,19 @@ class Account(NormalizedNameModel, OwnedModel):
     opening_balance_cents = models.BigIntegerField("saldo inicial (centavos)", default=0)
     opening_date = models.DateField("data do saldo inicial", default=_today)
     is_archived = models.BooleanField("arquivada", default=False)
+    # Só cartão de crédito: base da fatura prevista e do pagamento na projeção de saldo.
+    statement_closing_day = models.PositiveSmallIntegerField(
+        "dia de fechamento", null=True, blank=True
+    )
+    payment_due_day = models.PositiveSmallIntegerField("dia de vencimento", null=True, blank=True)
+    payment_account = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="paga pela conta",
+    )
 
     class Meta:
         verbose_name = "conta"
@@ -49,6 +62,35 @@ class Account(NormalizedNameModel, OwnedModel):
     @property
     def is_liability(self) -> bool:
         return self.kind == AccountKind.CREDIT_CARD
+
+    @property
+    def has_billing(self) -> bool:
+        """Cartão com fechamento, vencimento e conta pagadora: entra na fatura prevista."""
+        return bool(
+            self.is_liability
+            and self.statement_closing_day
+            and self.payment_due_day
+            and self.payment_account_id
+        )
+
+    def clean(self) -> None:
+        super().clean()
+        errors: dict[str, str] = {}
+        for field in ("statement_closing_day", "payment_due_day"):
+            day = getattr(self, field)
+            if day is not None and not 1 <= day <= 31:
+                errors[field] = "Use um dia entre 1 e 31."
+        payer = self.payment_account if self.payment_account_id else None
+        if payer is not None:
+            if payer.owner_id != self.owner_id:
+                errors["payment_account"] = "Conta inválida."
+            elif payer.is_liability or payer.pk == self.pk:
+                errors["payment_account"] = "Escolha uma conta que não seja cartão."
+        if not self.is_liability:
+            self.statement_closing_day = self.payment_due_day = None
+            self.payment_account = None
+        if errors:
+            raise ValidationError(errors)
 
 
 class TransactionKind(models.TextChoices):

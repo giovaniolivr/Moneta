@@ -22,7 +22,7 @@ from .models import (
     TransactionKind,
     TransactionStatus,
 )
-from .services import TransactionData
+from .services import CardBilling, TransactionData
 
 
 class TransactionForm(forms.Form):
@@ -280,8 +280,24 @@ class AccountForm(forms.Form):
         widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
         help_text="O saldo vale no início deste dia; lançamentos anteriores ficam só no histórico.",
     )
+    closing_day = forms.IntegerField(
+        label="Fecha no dia", required=False, min_value=1, max_value=31
+    )
+    due_day = forms.IntegerField(label="Vence no dia", required=False, min_value=1, max_value=31)
+    payment_account = forms.ModelChoiceField(
+        label="Fatura paga pela conta",
+        queryset=Account.objects.none(),
+        required=False,
+        empty_label="Não informar",
+    )
 
-    def __init__(self, *args: Any, instance: Account | None = None, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *args: Any,
+        user: User | None = None,
+        instance: Account | None = None,
+        **kwargs: Any,
+    ) -> None:
         if instance is not None and "initial" not in kwargs and not _has_data(args, kwargs):
             balance = instance.opening_balance_cents
             kwargs["initial"] = {
@@ -289,16 +305,38 @@ class AccountForm(forms.Form):
                 "kind": instance.kind,
                 "opening_balance": -balance if instance.is_liability else balance,
                 "opening_date": instance.opening_date,
+                "closing_day": instance.statement_closing_day,
+                "due_day": instance.payment_due_day,
+                "payment_account": instance.payment_account_id,
             }
         super().__init__(*args, **kwargs)
         self.instance = instance
         self.fields["opening_date"].initial = timezone.localdate
-        for name in ("name", "kind", "opening_balance", "opening_date"):
+        owner = user if user is not None else (instance.owner if instance else None)
+        if owner is not None:
+            self.fields["payment_account"].queryset = (  # type: ignore[attr-defined]
+                Account.objects.for_user(owner)
+                .exclude(kind=AccountKind.CREDIT_CARD)
+                .filter(is_archived=False)
+            )
+        for name in (
+            "name",
+            "kind",
+            "opening_balance",
+            "opening_date",
+            "closing_day",
+            "due_day",
+            "payment_account",
+        ):
             self.fields[name].widget.attrs["class"] = "input"
         if instance is not None:
             # O tipo não muda depois de criada (mudaria o sentido do histórico).
             self.fields["kind"].required = False
             self.fields["kind"].disabled = True
+
+    def billing(self) -> CardBilling:
+        d = self.cleaned_data
+        return CardBilling(d.get("closing_day"), d.get("due_day"), d.get("payment_account"))
 
     def opening_balance_cents(self) -> int:
         cents: int = self.cleaned_data.get("opening_balance") or 0

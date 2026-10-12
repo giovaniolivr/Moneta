@@ -1,0 +1,97 @@
+{% extends "layouts/app.html" %}
+{% load static ui money %}
+
+{% block title %}Projeção de saldo{% endblock %}
+
+{% block head %}
+{{ block.super }}
+<script src="{% static 'js/charts.js' %}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Projeção de saldo</h1>
+    <p>De hoje até {{ end|date:"d/m/Y" }}: saldos realizados + movimentações previstas + pagamento das faturas no vencimento.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'planning:index' %}">Planejamento</a>
+    <a class="btn btn-ghost" href="{% url 'ledger:planned_list' %}">{% icon "calendar" "icon-sm" %}Previstas</a>
+  </div>
+</div>
+
+<div class="stack">
+  {% for alert in alerts %}
+    <div class="alert alert-error" role="alert">
+      {% icon "circle-alert" "icon-sm" %}
+      <span class="alert-text"><strong>{{ alert.account.name }}</strong> deve ficar negativa em {{ alert.first|date:"d/m" }} — mínimo de {{ alert.low|brl }} em {{ alert.low_day|date:"d/m" }}.</span>
+    </div>
+  {% endfor %}
+  {% for card in unconfigured_cards %}
+    <div class="alert" role="status">
+      {% icon "info" "icon-sm" %}
+      <span class="alert-text">Para prever a fatura de <strong>{{ card.name }}</strong> e o pagamento dela, informe fechamento, vencimento e conta pagadora.</span>
+      <a class="btn btn-secondary btn-sm" href="{% url 'ledger:account_update' card.pk %}" data-drawer>Configurar</a>
+    </div>
+  {% endfor %}
+
+  <section class="card chart-card" aria-labelledby="projection-chart-title">
+    <div class="chart-header">
+      <div>
+        <h2 id="projection-chart-title">Saldo previsto, dia a dia</h2>
+        <p class="chart-subtitle">Entra só o que está previsto (recorrências, parcelas, contas futuras) e as faturas. Gastos do dia a dia que não são recorrência ficam de fora — a projeção tende a ser otimista.</p>
+      </div>
+      <ul class="legend">
+        {% for s in chart.series %}<li><span class="viz-key viz-key-line viz-{{ s.key }}"></span>{{ s.label }}</li>{% endfor %}
+      </ul>
+    </div>
+    <div class="chart" data-chart="lines" data-source="data-projection" data-label="Saldo previsto dia a dia"></div>
+  </section>
+
+  <section class="card" aria-labelledby="projection-table-title">
+    <div class="card-header"><h2 id="projection-table-title">Por conta</h2></div>
+    <div class="table-scroll">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th scope="col">Conta</th>
+            {% for day in checkpoints %}<th scope="col">{% if forloop.first %}Hoje{% else %}{{ day|date:"d/m" }}{% endif %}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <th scope="row">{{ row.account.name }}{% if row.account.is_liability %} <span class="muted">(cartão)</span>{% endif %}</th>
+              {% for value in row.values %}<td{% if value < 0 and not row.account.is_liability %} class="amount-expense"{% endif %}>{{ value|brl }}</td>{% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr><th scope="row">Em contas</th>{% for v in totals.accounts %}<td>{{ v|brl }}</td>{% endfor %}</tr>
+          <tr><th scope="row">Líquido</th>{% for v in totals.net %}<td>{{ v|brl }}</td>{% endfor %}</tr>
+        </tfoot>
+      </table>
+    </div>
+  </section>
+
+  {% if statements %}
+    <section class="card" aria-labelledby="statements-title">
+      <div class="card-header"><h2 id="statements-title">Faturas previstas</h2></div>
+      <ul class="list">
+        {% for card, s in statements %}
+          <li class="list-item">
+            <span class="avatar-icon">{% icon "credit-card" %}</span>
+            <span class="list-item-main">
+              <span class="list-item-title">{{ card.name }} · vence {{ s.due|date:"d/m" }}</span>
+              <span class="list-item-meta">{% if s.closed %}Fechada em {{ s.closing|date:"d/m" }} · falta pagar{% else %}Fecha em {{ s.closing|date:"d/m" }}{% if s.planned_cents %} · inclui {{ s.planned_cents|brl }} em previstas{% endif %}{% endif %} · paga por {{ card.payment_account.name }}</span>
+            </span>
+            <span class="amount amount-expense">{{ s.amount_cents|brl }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+</div>
+
+{{ chart|json_script:"data-projection" }}
+{% endblock %}
