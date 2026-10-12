@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -12,10 +13,16 @@ from apps.core.forms import apply_service_errors
 from apps.core.http import AuthenticatedHttpRequest
 
 from .domain.products import PRESETS
-from .forms import ProductForm, RateOverrideForm
+from .forms import ProductForm, RateOverrideForm, SimulationForm
 from .market import MarketDataError, update_rates
 from .models import InvestmentProduct
-from .selectors import effective_rates, list_products, product_rows
+from .selectors import (
+    effective_rates,
+    list_products,
+    product_rows,
+    run_simulations,
+    simulation_options,
+)
 from .services import create_product, delete_product, set_rate_override, update_product
 
 INDEX = "investments:index"
@@ -121,3 +128,54 @@ def product_delete(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpResp
     name = product.name
     delete_product(product)
     return done(request, f"Produto “{name}” excluído.", fallback=INDEX)
+
+
+def simulator(request: AuthenticatedHttpRequest) -> HttpResponse:
+    """GET com os parâmetros na URL: a simulação pode ser guardada/compartilhada como link."""
+    today = timezone.localdate()
+    options = simulation_options(request.user)
+    choices = [(o.key, o.label) for o in options]
+    form = SimulationForm(
+        request.GET or None,
+        choices=choices,
+        initial={"produto": [key for key, _ in choices], "meses": 24},
+    )
+    rows: list[dict[str, Any]] = []
+    chart = None
+    if form.is_bound and form.is_valid():
+        d = form.cleaned_data
+        chosen = set(d["produto"]) or {key for key, _ in choices}
+        results = run_simulations(
+            request.user,
+            [o for o in options if o.key in chosen],
+            start=today,
+            initial_cents=d.get("inicial") or 0,
+            monthly_cents=d.get("aporte") or 0,
+            months=d["meses"],
+        )
+        done = [(r, r.simulation) for r in results if r.simulation is not None]
+        best = max(done, key=lambda pair: pair[1].final.valuation.net_cents)[0] if done else None
+        rows = [{"row": r, "best": r is best} for r in results]
+        if done:
+            chart = {
+                "labels": [f"{p.day:%m/%y}" for p in done[0][1].points],
+                "series": [
+                    {
+                        "key": f"s{index % 8 + 1}",
+                        "label": r.option.label,
+                        "values": [p.valuation.net_cents for p in sim.points],
+                    }
+                    for index, (r, sim) in enumerate(done)
+                ],
+            }
+    return render(
+        request,
+        "investments/simulator.html",
+        {
+            "form": form,
+            "rows": rows,
+            "chart": chart,
+            "has_products": any(not o.key.startswith("ref-") for o in options),
+            "rates": effective_rates(request.user),
+        },
+    )

@@ -1,0 +1,86 @@
+{% extends "layouts/app.html" %}
+{% load static ui money investments_ui %}
+
+{% block title %}Simulador de investimento{% endblock %}
+
+{% block head %}
+{{ block.super }}
+<script src="{% static 'js/charts.js' %}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Simulador de investimento</h1>
+    <p>Quanto rende um valor inicial + aportes mensais, produto a produto, já com IOF e IR.</p>
+  </div>
+  <a class="btn btn-ghost" href="{% url 'investments:index' %}">Taxas e produtos</a>
+</div>
+
+<div class="stack">
+  <form class="card stack" method="get" action="">
+    {% if form.non_field_errors %}<div class="alert alert-error" role="alert">{% icon "circle-alert" "icon-sm" %}{{ form.non_field_errors|join:" " }}</div>{% endif %}
+    <div class="form-row">
+      {% for name in "inicial aporte meses"|split_words %}
+        {% with field=form|field_named:name %}
+          <div class="field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+          </div>
+        {% endwith %}
+      {% endfor %}
+    </div>
+    <fieldset>
+      <legend>{{ form.produto.label }}</legend>
+      <div class="chips">
+        {% for option in form.produto %}<label class="chip">{{ option.tag }}<span>{{ option.choice_label }}</span></label>{% endfor %}
+      </div>
+      {% if not has_products %}<p class="field-help">Cadastre seus produtos (ex.: Caixinha Turbo) em <a href="{% url 'investments:index' %}">Investimentos</a> para compará-los aqui.</p>{% endif %}
+    </fieldset>
+    <div><button class="btn btn-primary" type="submit">Simular</button></div>
+    <p class="text-sm muted">Taxas em uso: CDI {{ rates.cdi.annual_percent|floatformat:2|default:"—" }}% · Selic {{ rates.selic.annual_percent|floatformat:2|default:"—" }}% · IPCA 12m {{ rates.ipca.annual_percent|floatformat:2|default:"—" }}% ({{ rates.cdi.source }}). Supõe as taxas constantes no período — o CDI muda.</p>
+  </form>
+
+  {% if rows %}
+    <section class="card" aria-labelledby="sim-results-title">
+      <div class="card-header"><h2 id="sim-results-title">Resultado no resgate</h2></div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th scope="col">Produto</th><th scope="col">Investido</th><th scope="col">Bruto</th><th scope="col">IOF</th><th scope="col">IR</th><th scope="col">Líquido</th><th scope="col">Rendimento líquido</th><th scope="col">Em dinheiro de hoje</th></tr></thead>
+          <tbody>
+            {% for item in rows %}{% with r=item.row %}
+              <tr>
+                <th scope="row">{{ r.option.label }}{% if item.best %} <span class="badge badge-best">{% icon "circle-check" "icon-sm" %}maior líquido</span>{% endif %}</th>
+                {% if r.simulation %}{% with f=r.simulation.final %}
+                  <td>{{ f.invested_cents|brl }}</td>
+                  <td>{{ f.valuation.gross_cents|brl }}</td>
+                  <td>{{ f.valuation.iof_cents|brl }}</td>
+                  <td>{{ f.valuation.ir_cents|brl }}</td>
+                  <td><strong>{{ f.valuation.net_cents|brl }}</strong></td>
+                  <td>{{ f.valuation.net_cents|subtract:f.invested_cents|brl_signed }}</td>
+                  <td>{% if r.real_net_cents is not None %}{{ r.real_net_cents|brl }}{% else %}<span class="muted">sem IPCA</span>{% endif %}</td>
+                {% endwith %}{% else %}
+                  <td colspan="7" class="muted">Falta a taxa {{ r.missing }} — atualize em Investimentos.</td>
+                {% endif %}
+              </tr>
+            {% endwith %}{% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="text-sm muted mt-4">IR regressivo calculado aporte por aporte, pelo tempo que cada um ficou aplicado; IOF só em resgates com menos de 30 dias. “Em dinheiro de hoje” desconta a inflação (IPCA 12 meses) do período.</p>
+    </section>
+
+    {% if chart %}
+      <section class="card chart-card" aria-labelledby="sim-chart-title">
+        <div class="chart-header">
+          <div><h2 id="sim-chart-title">Valor líquido ao longo do tempo</h2><p class="chart-subtitle">Se resgatasse tudo em cada data</p></div>
+          <ul class="legend">{% for s in chart.series %}<li><span class="viz-key viz-key-line viz-{{ s.key }}"></span>{{ s.label }}</li>{% endfor %}</ul>
+        </div>
+        <div class="chart" data-chart="lines" data-source="data-simulation" data-label="Valor líquido ao longo do tempo"></div>
+      </section>
+      {{ chart|json_script:"data-simulation" }}
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

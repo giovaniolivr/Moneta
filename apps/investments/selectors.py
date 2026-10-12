@@ -5,7 +5,8 @@ from decimal import Decimal
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.db.models import QuerySet
 
-from .domain.products import MissingRateError
+from .domain.products import Indexer, MissingRateError, ProductSpec, Taxation
+from .domain.simulation import Simulation, simulate
 from .models import InvestmentProduct, MarketRate, RateOverride, Series
 
 UserLike = AbstractBaseUser | AnonymousUser
@@ -81,4 +82,66 @@ def product_rows(user: UserLike, today: datetime.date) -> list[ProductRow]:
             missing = str(exc)
         accounts = [a.name for a in product.accounts.all() if a.owner_id == product.owner_id]
         rows.append(ProductRow(product, gross, net, missing, accounts))
+    return rows
+
+
+REFERENCES: dict[str, tuple[str, ProductSpec]] = {
+    "ref-cdi": ("100% do CDI (referência)", ProductSpec(Indexer.CDI, Decimal(100), Taxation.TAXED)),
+    "ref-poupanca": ("Poupança (referência)", ProductSpec(Indexer.POUPANCA, None, Taxation.EXEMPT)),
+}
+
+
+@dataclass(frozen=True)
+class SimulationOption:
+    key: str
+    label: str
+    spec: ProductSpec
+
+
+def simulation_options(user: UserLike) -> list[SimulationOption]:
+    """Produtos do usuário + referências fixas (para simular mesmo sem produto cadastrado)."""
+    own = [
+        SimulationOption(str(p.pk), f"{p.name} ({p.rate_label})", p.spec)
+        for p in list_products(user)
+    ]
+    refs = [SimulationOption(key, label, spec) for key, (label, spec) in REFERENCES.items()]
+    return own + refs
+
+
+@dataclass(frozen=True)
+class SimulationRow:
+    option: SimulationOption
+    simulation: Simulation | None
+    missing: str  # taxa de mercado que faltou
+    real_net_cents: int | None  # líquido em dinheiro de hoje (IPCA)
+
+
+def run_simulations(
+    user: UserLike,
+    options: list[SimulationOption],
+    *,
+    start: datetime.date,
+    initial_cents: int,
+    monthly_cents: int,
+    months: int,
+) -> list[SimulationRow]:
+    rates = effective_rates(user)
+    cdi, selic = rates[Series.CDI].annual, rates[Series.SELIC].annual
+    ipca = rates[Series.IPCA].annual
+    rows = []
+    for option in options:
+        try:
+            yield_ = option.spec.yield_for(cdi=cdi, selic=selic)
+        except MissingRateError as exc:
+            rows.append(SimulationRow(option, None, str(exc), None))
+            continue
+        result = simulate(
+            yield_=yield_,
+            taxes=option.spec.taxation.rule,
+            start=start,
+            initial_cents=initial_cents,
+            monthly_cents=monthly_cents,
+            months=months,
+        )
+        rows.append(SimulationRow(option, result, "", result.real_value(ipca)))
     return rows

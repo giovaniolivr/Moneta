@@ -466,7 +466,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 22 ✅ | Taxas de mercado (CDI, Selic, IPCA): histórico no banco, busca na API SGS do Banco Central sob demanda, valor manual | sem rede nos testes; falha de rede não quebra nada |
 | 23 ✅ | Produtos de investimento (modelos editáveis) e produto da conta | Caixinha/CDB/LCI/poupança/Tesouro Selic configuráveis |
 | 24 ✅ | Rendimento estimado (líquido) na projeção de saldo e nas metas | declarado como estimativa |
-| 25 | Simulador de investimento: valor inicial + aportes + prazo, produtos lado a lado | bruto, IOF, IR, líquido, gráfico + tabela |
+| 25 ✅ | Simulador de investimento: valor inicial + aportes + prazo, produtos lado a lado | bruto, IOF, IR, líquido, gráfico + tabela |
 | 26 | Estratégias de compra (1): à vista com desconto × parcelado sem/com juros (dinheiro rendendo até cada parcela) × entrada + parcelas | custo real na mesma data-base + impacto mensal |
 | 27 | Estratégias de compra (2): juntar e comprar depois × comprar agora; quanto guardar por mês; recomendação com evidência e ligação com metas/projeção | escolhe a que menos pesa no bolso |
 | 28 | Polimento da Fase 3 | |

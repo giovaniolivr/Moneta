@@ -3,9 +3,10 @@ from typing import Any
 
 from django import forms
 
-from apps.core.forms import has_data
+from apps.core.forms import MoneyField, has_data
 
 from .domain.products import PRESETS, Indexer, Taxation
+from .domain.simulation import MAX_MONTHS
 from .models import InvestmentProduct, Series
 from .services import ProductData
 
@@ -92,3 +93,27 @@ class ProductForm(forms.Form):
             **preset,
             "rate": f"{rate}".replace(".", ",") if rate is not None else "",
         }
+
+
+class SimulationForm(forms.Form):
+    """Parâmetros em português na URL (como na lista de movimentações): dá para guardar o link."""
+
+    inicial = MoneyField(label="Valor inicial", required=False, allow_zero=True)
+    aporte = MoneyField(label="Aporte mensal", required=False, allow_zero=True)
+    meses = forms.IntegerField(label="Prazo (meses)", min_value=1, max_value=MAX_MONTHS)
+    produto = forms.MultipleChoiceField(
+        label="Comparar", widget=forms.CheckboxSelectMultiple, required=False
+    )
+
+    def __init__(self, *args: Any, choices: list[tuple[str, str]], **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["produto"].choices = choices  # type: ignore[attr-defined]
+        for name in ("inicial", "aporte", "meses"):
+            self.fields[name].widget.attrs["class"] = "input"
+        self.fields["meses"].widget.attrs["inputmode"] = "numeric"
+
+    def clean(self) -> dict[str, Any]:
+        data = super().clean() or {}
+        if not (data.get("inicial") or data.get("aporte")) and not self.errors:
+            raise forms.ValidationError("Informe um valor inicial, um aporte mensal ou os dois.")
+        return data

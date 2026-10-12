@@ -1994,6 +1994,15 @@
     --viz-color: var(--color-chart-8);
   }
 
+  .viz-s1 { --viz-color: var(--color-chart-1); }
+  .viz-s2 { --viz-color: var(--color-chart-2); }
+  .viz-s3 { --viz-color: var(--color-chart-3); }
+  .viz-s4 { --viz-color: var(--color-chart-4); }
+  .viz-s5 { --viz-color: var(--color-chart-5); }
+  .viz-s6 { --viz-color: var(--color-chart-6); }
+  .viz-s7 { --viz-color: var(--color-chart-7); }
+  .viz-s8 { --viz-color: var(--color-chart-8); }
+
   .viz-previous {
     --viz-color: var(--color-viz-muted);
   }

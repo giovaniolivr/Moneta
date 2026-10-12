@@ -127,3 +127,21 @@ class TestPortfolio:
         out = p.withdraw_net(D(2026, 10, 13), 10_000)
         assert (out.gross_cents, out.iof_cents, out.ir_cents) == (10_000, 0, 0)
         assert p.lots == []
+
+
+def test_business_index_matches_day_by_day_count() -> None:
+    def naive(start: datetime.date, end: datetime.date) -> int:
+        days, day = 0, start
+        while day < end:
+            days += is_business_day(day)
+            day += datetime.timedelta(days=1)
+        return days
+
+    pairs = [
+        (D(1998, 12, 30), D(2001, 1, 3)),
+        (D(2026, 2, 13), D(2026, 2, 19)),
+        (D(2026, 12, 31), D(2027, 1, 4)),
+        (D(2030, 6, 1), D(2041, 6, 1)),
+    ]
+    for start, end in pairs:
+        assert business_days(start, end) == naive(start, end)

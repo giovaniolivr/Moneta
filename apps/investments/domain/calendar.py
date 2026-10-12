@@ -39,14 +39,34 @@ def is_business_day(day: datetime.date) -> bool:
     return day.weekday() < 5 and day not in holidays(day.year)
 
 
+@cache
+def _year_index(year: int) -> tuple[int, ...]:
+    """Dias úteis acumulados ANTES de cada dia do ano (índice 0 = 1º de janeiro)."""
+    counts, total = [], 0
+    day = datetime.date(year, 1, 1)
+    while day.year == year:
+        counts.append(total)
+        total += is_business_day(day)
+        day += datetime.timedelta(days=1)
+    counts.append(total)  # posição extra: total do ano
+    return tuple(counts)
+
+
+@cache
+def _years_before(year: int) -> int:
+    """Dias úteis acumulados de 2000 até o início de `year` (referência arbitrária)."""
+    if year <= 2000:
+        return -sum(_year_index(y)[-1] for y in range(year, 2000))
+    return _years_before(year - 1) + _year_index(year - 1)[-1]
+
+
+def business_index(day: datetime.date) -> int:
+    """Quantos dias úteis existem antes de `day` (a partir de uma referência fixa)."""
+    return _years_before(day.year) + _year_index(day.year)[day.timetuple().tm_yday - 1]
+
+
 def business_days(start: datetime.date, end: datetime.date) -> int:
     """Dias úteis em [start, end): quantas vezes o dinheiro rende entre aplicar e resgatar."""
     if end <= start:
         return 0
-    count = 0
-    day = start
-    while day < end:
-        if is_business_day(day):
-            count += 1
-        day += datetime.timedelta(days=1)
-    return count
+    return business_index(end) - business_index(start)
