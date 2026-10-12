@@ -1,5 +1,7 @@
 # Moneta
 
+[![CI](https://github.com/giovaniolivr/Moneta/actions/workflows/ci.yml/badge.svg)](https://github.com/giovaniolivr/Moneta/actions/workflows/ci.yml)
+
 Plataforma de gestão e planejamento financeiro pessoal: registro rápido de movimentações,
 dashboard analítica e, no futuro, objetivos, simulação de investimentos e estratégias de compra.
 
