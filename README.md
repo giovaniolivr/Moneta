@@ -73,9 +73,9 @@ pytest · ruff · mypy (strict)
 **Fase 4 — pesquisa de preços**
 
 - [x] 29. Lista de desejos: preço-alvo, registro rápido (cole o link, a loja é reconhecida), melhor preço agora com frete, menor já visto, histórico e gráfico
-- [ ] 30. Coletor do Mercado Livre (API oficial, sob demanda)
-- [ ] 31. Alertas de preço na dashboard
-- [ ] 32. Da lista para as estratégias de compra e metas
+- [ ] 30. Coletor do Mercado Livre (API oficial) — na etapa de configuração real, com as credenciais
+- [x] 31. Alertas de preço nas Análises da dashboard: no alvo ou o menor dos últimos 60 dias, com evidência
+- [x] 32. Da lista para as estratégias de compra (preço e parcelas preenchidos) e para uma meta
 - [ ] 33. Polimento da Fase 4
 
 **Próxima fase:** assistente com IA.

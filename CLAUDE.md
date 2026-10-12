@@ -16,6 +16,9 @@ passo a passo (sem ler nem exibir o conteúdo de `.env`; ele cola os valores):
 4. Agendar `manage.py backup` no Agendador de Tarefas do Windows (diário) e testar um restore.
 5. Fazer um export JSON inicial e conferir que `db.sqlite3`/`.env`/`backups/` seguem fora do git.
 Mobile/PWA também fica para essa etapa ("usar o app em si").
+6. Entrega 30 (coletor do Mercado Livre, API oficial com OAuth): criar o app no portal de
+   desenvolvedores do ML com o usuário, credenciais no `.env`, validar contra a API real.
+Polimentos (inclusive a entrega 33) ficam para quando a base do projeto estiver pronta.
 
 ## Documentos de referência
 - `docs/ARQUITETURA.md` — stack, camadas, modelagem, roadmap, decisões. Fonte da verdade técnica.
@@ -144,6 +147,9 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
 - Lista de desejos (`apps/shopping`): `WishItem` + `PriceObservation` (loja pelo domínio do link em
   `shopping/domain/prices.store_from_url`; "melhor agora" = `summarize()`). Nunca raspar páginas de
   lojas: só registro manual ou API oficial. Export no formato v9.
+- Alertas de preço: `shopping.selectors.price_alerts()` → `PriceSignal` injetado pela view da
+  dashboard (`build_dashboard(price_signals=)`, só período "mes") → `PriceRule`. `Insight.url` é o
+  drill-down quando não há filtro de movimentações.
 - `.stack` e `.chart-card` são grids com `minmax(0, 1fr)`: sem isso conteúdo largo alarga a página
   no celular. Ações de cabeçalho (`.page-actions`) e `.card-header` quebram linha.
 - Git Bash deste ambiente reduz barras invertidas duplas a uma só em heredocs: para texto com barra invertida, gere o arquivo

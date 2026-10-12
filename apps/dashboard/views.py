@@ -3,10 +3,11 @@ from typing import Any
 
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.analytics.dashboard import PERIODS, build_dashboard, parse_month
-from apps.analytics.domain.insights import BudgetSignal
+from apps.analytics.domain.insights import BudgetSignal, PriceSignal
 from apps.analytics.domain.periods import month_end
 from apps.core.http import AuthenticatedHttpRequest
 from apps.goals.models import Goal
@@ -15,6 +16,7 @@ from apps.ledger.selectors import accounts_with_balances, planned_transactions, 
 from apps.planning.models import Budget, Recurrence
 from apps.planning.selectors import budget_rows, month_outlook, projection_data
 from apps.planning.services import materialize
+from apps.shopping.selectors import price_alerts
 
 
 def index(request: AuthenticatedHttpRequest) -> HttpResponse:
@@ -37,8 +39,26 @@ def index(request: AuthenticatedHttpRequest) -> HttpResponse:
             for row in budget_rows(request.user, month_start, today)
         ]
 
+    prices = [
+        PriceSignal(
+            item=a.item.name,
+            url=reverse("shopping:item_detail", args=[a.item.pk]),
+            store=a.best.store,
+            current_cents=a.best.total_cents,
+            kind="target" if a.kind == "target" else "low",
+            target_cents=a.item.target_cents,
+            previous_low_cents=a.previous_low_cents,
+            window_days=a.window_days,
+        )
+        for a in price_alerts(request.user, today)
+    ]
     dashboard = build_dashboard(
-        request.user, request.GET.get("periodo", ""), today, month, budget_signals
+        request.user,
+        request.GET.get("periodo", ""),
+        today,
+        month,
+        budget_signals,
+        price_signals=prices,
     )
     accounts = accounts_with_balances(request.user)
     return render(

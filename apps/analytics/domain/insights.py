@@ -75,6 +75,7 @@ class Insight:
     evidence: tuple[Evidence, ...] = ()
     filter: TransactionFilter | None = None
     insufficient: bool = False
+    url: str = ""  # drill-down fora das movimentações (ex.: item da lista de desejos)
 
 
 @dataclass(frozen=True)
@@ -122,6 +123,20 @@ class BudgetSignal:
 
 
 @dataclass(frozen=True)
+class PriceSignal:
+    """Preço bom agora num item da lista de desejos (calculado fora; aqui vira análise)."""
+
+    item: str
+    url: str
+    store: str
+    current_cents: int
+    kind: Literal["target", "low"]
+    target_cents: int | None = None
+    previous_low_cents: int | None = None
+    window_days: int = 60
+
+
+@dataclass(frozen=True)
 class AnalyticsContext:
     today: datetime.date
     current: DateRange  # recorte efetivo (até hoje)
@@ -137,6 +152,7 @@ class AnalyticsContext:
     weekday_window: DateRange | None = None
     daily_expenses: Mapping[datetime.date, int] = field(default_factory=dict)
     budgets: Sequence[BudgetSignal] = ()
+    prices: Sequence[PriceSignal] = ()
     settings: InsightSettings = field(default_factory=InsightSettings)
 
     @property
@@ -584,9 +600,40 @@ class BudgetRule:
         return found[: ctx.settings.max_per_rule]
 
 
+class PriceRule:
+    """Lista de desejos: preço no alvo ou o menor da janela recente — hora boa de comprar."""
+
+    id = "preco"
+    title = "Lista de desejos"
+
+    def evaluate(self, ctx: AnalyticsContext) -> list[Insight]:
+        found = []
+        for p in ctx.prices:
+            evidence = [
+                Evidence(f"Melhor preço agora ({p.store})", p.current_cents),
+                Evidence("Seu preço-alvo", p.target_cents),
+                Evidence(f"Menor antes, últimos {p.window_days} dias", p.previous_low_cents),
+            ]
+            if p.kind == "target":
+                message = (
+                    f"{p.item}: {_brl(p.current_cents)} na {p.store}, dentro do seu alvo de "
+                    f"{_brl(p.target_cents or 0)}."
+                )
+            else:
+                message = (
+                    f"{p.item}: {_brl(p.current_cents)} na {p.store}, o menor preço dos últimos "
+                    f"{p.window_days} dias (antes: {_brl(p.previous_low_cents or 0)})."
+                )
+            found.append(
+                Insight(self.id, self.title, "positive", message, tuple(evidence), url=p.url)
+            )
+        return found[: ctx.settings.max_per_rule]
+
+
 DEFAULT_RULES: tuple[InsightRule, ...] = (
     MonthSummaryRule(),
     BudgetRule(),
+    PriceRule(),
     AboveAverageRule(),
     TrendRule(),
     ConcentrationRule(),

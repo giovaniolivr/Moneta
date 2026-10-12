@@ -17,6 +17,7 @@ KNOWN_STORES = {
     "magalu.com": "Magazine Luiza",
 }
 FRESH_DAYS = 30  # observações mais antigas não contam como "preço agora"
+LOW_WINDOW_DAYS = 60
 
 
 def store_from_url(url: str) -> str:
@@ -34,6 +35,7 @@ class Observation:
     day: datetime.date
     price_cents: int
     shipping_cents: int = 0
+    installments: int | None = None
 
     @property
     def total_cents(self) -> int:
@@ -77,3 +79,16 @@ def summarize(
     )
     lowest = min(observations, key=lambda o: (o.total_cents, o.day))
     return PriceSummary(fresh[0] if fresh else None, lowest, fresh, target_cents)
+
+
+def previous_low(
+    observations: Sequence[Observation],
+    *,
+    best: Observation,
+    today: datetime.date,
+    days: int = LOW_WINDOW_DAYS,
+) -> int | None:
+    """Menor preço + frete registrado na janela ANTES do melhor preço atual (None sem base)."""
+    start = today - datetime.timedelta(days=days)
+    prior = [o.total_cents for o in observations if start <= o.day < best.day]
+    return min(prior) if prior else None

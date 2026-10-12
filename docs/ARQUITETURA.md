@@ -463,9 +463,9 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | # | Entrega | Pronto quando |
 |---|---------|---------------|
 | 29 ✅ | Lista de desejos (`apps/shopping`): itens, preço-alvo, registro manual rápido (loja pelo link), melhor preço agora, menor já visto, histórico e gráfico | sem raspar páginas |
-| 30 | Interface `PriceSource` + coletor do Mercado Livre (API oficial, OAuth do usuário), sob demanda | desligado sem credenciais; testes sem rede |
-| 31 | Alertas: abaixo do alvo / menor preço em N dias, na dashboard | com evidência |
-| 32 | Da lista para as Estratégias de compra (preço e parcelas preenchidos) e para uma meta | |
+| 30 ⏸ | Interface `PriceSource` + coletor do Mercado Livre (API oficial, OAuth do usuário), sob demanda — **adiada para a etapa de configuração real** (precisa das credenciais do usuário) | desligado sem credenciais; testes sem rede |
+| 31 ✅ | Alertas: no alvo / menor preço em 60 dias, nas Análises da dashboard (mês atual) | com evidência e link do item |
+| 32 ✅ | Da lista para as Estratégias de compra (preço e parcelas preenchidos) e para uma meta | |
 | 33 | Polimento da Fase 4 | |
 
 ### Roadmap da Fase 3 — investimentos e estratégias de compra

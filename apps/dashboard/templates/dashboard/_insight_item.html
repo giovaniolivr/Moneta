@@ -5,6 +5,7 @@
     <p class="insight-message">{{ insight.message }}</p>
     <div class="insight-actions">
       {% if insight.filter %}<a class="text-sm" href="{{ insight.filter|transaction_list_url }}">Ver movimentações</a>{% endif %}
+      {% if insight.url %}<a class="text-sm" href="{{ insight.url }}">Ver item</a>{% endif %}
       {% if insight.evidence %}
         <details class="chart-table insight-why">
           <summary>Por quê?</summary>

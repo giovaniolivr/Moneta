@@ -17,6 +17,8 @@
   <div class="page-actions">
     <a class="btn btn-ghost" href="{% url 'shopping:index' %}">Lista</a>
     <a class="btn btn-ghost" href="{% url 'shopping:item_update' item.pk %}" data-drawer>Editar</a>
+    {% if goal_url %}<a class="btn btn-ghost" href="{{ goal_url }}" data-drawer>{% icon "piggy-bank" "icon-sm" %}Criar meta</a>{% endif %}
+    {% if compare_url %}<a class="btn btn-secondary" href="{{ compare_url }}">{% icon "shopping-bag" "icon-sm" %}Comparar formas de pagar</a>{% endif %}
     <a class="btn btn-primary" href="{% url 'shopping:observation_create' item.pk %}" data-drawer>{% icon "plus" "icon-sm" %}Registrar preço</a>
   </div>
 </div>

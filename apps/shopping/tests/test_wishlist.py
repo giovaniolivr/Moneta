@@ -121,7 +121,7 @@ class TestViews:
         assert response.status_code == 204
         page = client.get(reverse("shopping:index")).content.decode()
         assert "Headset" in page
-        assert "abaixo do alvo" in page
+        assert "no alvo" in page
         assert "melhor agora: KaBuM!" in page
         detail = client.get(reverse("shopping:item_detail", args=[item.pk])).content.decode()
         assert "10x sem juros" in detail

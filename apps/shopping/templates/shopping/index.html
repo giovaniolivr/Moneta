@@ -21,7 +21,7 @@
           <a class="list-item list-item-link" href="{% url 'shopping:item_detail' row.item.pk %}">
             <span class="avatar-icon">{% icon "shopping-bag" %}</span>
             <span class="list-item-main">
-              <span class="list-item-title">{{ row.item.name }}{% if s.below_target %} <span class="badge badge-best">{% icon "circle-check" "icon-sm" %}abaixo do alvo</span>{% endif %}</span>
+              <span class="list-item-title">{{ row.item.name }}{% if s.below_target %} <span class="badge badge-best">{% icon "circle-check" "icon-sm" %}no alvo</span>{% elif row.item.pk in low_ids %} <span class="badge badge-best">{% icon "circle-check" "icon-sm" %}menor em {{ low_days }} dias</span>{% endif %}</span>
               <span class="list-item-meta">
                 {% if s.best_now %}melhor agora: {{ s.best_now.store }}{% if s.best_now.shipping_cents %} (com frete){% endif %} · {{ s.stores_now|length }} loja{{ s.stores_now|length|pluralize }}{% if s.lowest_ever %} · menor já visto {{ s.lowest_ever.total_cents|brl }}{% endif %}
                 {% elif s.lowest_ever %}sem preço nos últimos 30 dias · menor já visto {{ s.lowest_ever.total_cents|brl }}

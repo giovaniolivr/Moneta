@@ -20,6 +20,7 @@ from .domain.insights import (
     Insight,
     InsightSettings,
     MonthData,
+    PriceSignal,
     evaluate,
     weekday_window,
 )
@@ -282,6 +283,7 @@ def build_insights(
     expenses_by_category: dict[uuid.UUID, int],
     settings: InsightSettings | None = None,
     budgets: Sequence[BudgetSignal] = (),
+    prices: Sequence[PriceSignal] = (),
 ) -> list[Insight]:
     """Agrega o histórico necessário e avalia as regras de `domain.insights`."""
     first = selectors.first_activity_date(user)
@@ -328,6 +330,7 @@ def build_insights(
         weekday_window=window,
         daily_expenses=selectors.daily_expenses(user, window.start, window.end),
         budgets=budgets,
+        prices=prices,
         settings=settings,
     )
     return evaluate(ctx)
@@ -348,7 +351,9 @@ def build_dashboard(
     today: datetime.date,
     month: datetime.date | None = None,
     budget_signals: Callable[[datetime.date], Sequence[BudgetSignal]] | None = None,
+    price_signals: Sequence[PriceSignal] = (),
 ) -> Dashboard:
+    """`price_signals` só entram na visão do mês atual (são sobre o preço de hoje)."""
     """`month` (1º dia) escolhe um mês específico, navegável com ◂ ▸; sem ele vale `period`."""
     current_month = month_start(today)
     if month is not None:
@@ -503,6 +508,7 @@ def build_dashboard(
             previous=previous,
             expenses_by_category={b.id: b.cents for b in by_category if b.id is not None},
             budgets=budget_signals(start) if single_month and budget_signals else (),
+            prices=price_signals if period == "mes" else (),
         )
         if comparison
         else []

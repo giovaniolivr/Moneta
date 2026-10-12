@@ -1,5 +1,6 @@
 import uuid
 from typing import Any
+from urllib.parse import urlencode
 
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
@@ -11,10 +12,19 @@ from django.views.decorators.http import require_http_methods, require_POST
 from apps.core.drawer import done, render_drawer
 from apps.core.forms import apply_service_errors
 from apps.core.http import AuthenticatedHttpRequest
+from apps.investments.selectors import simulation_options
 
+from .domain.prices import LOW_WINDOW_DAYS, PriceSummary
 from .forms import ObservationForm, WishItemForm
 from .models import WishItem
-from .selectors import best_price_series, item_rows, list_items, list_observations, summary
+from .selectors import (
+    best_price_series,
+    item_rows,
+    list_items,
+    list_observations,
+    price_alerts,
+    summary,
+)
 from .services import (
     ObservationData,
     add_observation,
@@ -29,13 +39,17 @@ INDEX = "shopping:index"
 
 
 def index(request: AuthenticatedHttpRequest) -> HttpResponse:
-    rows = item_rows(request.user, timezone.localdate())
+    today = timezone.localdate()
+    rows = item_rows(request.user, today)
+    alerts = price_alerts(request.user, today)
     return render(
         request,
         "shopping/index.html",
         {
             "active": [r for r in rows if not r.item.is_done],
             "done_items": [r for r in rows if r.item.is_done],
+            "low_ids": {a.item.pk for a in alerts if a.kind == "low"},
+            "low_days": LOW_WINDOW_DAYS,
         },
     )
 
@@ -100,6 +114,32 @@ def item_delete(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpRespons
     return done(request, f"“{name}” saiu da lista.", fallback=INDEX)
 
 
+def _money_param(cents: int) -> str:
+    """Centavos → "1234,56" (formato aceito pelos campos de dinheiro)."""
+    return f"{cents // 100},{cents % 100:02d}"
+
+
+def compare_url(user: Any, item: WishItem, s: PriceSummary) -> str:
+    """Estratégias de compra já com o melhor preço (e as parcelas sem juros, se houver)."""
+    price = s.best_now.total_cents if s.best_now else item.target_cents
+    if not price:
+        return ""
+    options = simulation_options(user)
+    params = {"valor": _money_param(price), "produto": options[0].key if options else "nenhum"}
+    if s.best_now and s.best_now.installments:
+        params["sj_parcelas"] = str(s.best_now.installments)
+    return f"{reverse('investments:purchase')}?{urlencode(params)}"
+
+
+def goal_url(item: WishItem, s: PriceSummary) -> str:
+    """Meta pré-preenchida com o alvo (ou o melhor preço) do item."""
+    value = item.target_cents or (s.best_now.total_cents if s.best_now else None)
+    if not value:
+        return ""
+    params = {"nome": item.name[:80], "alvo": f"{value / 100:.2f}"}
+    return f"{reverse('goals:goal_create')}?{urlencode(params)}"
+
+
 def item_detail(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpResponse:
     item = get_object_or_404(list_items(request.user), pk=pk)
     series = best_price_series(item)
@@ -111,12 +151,15 @@ def item_detail(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpRespons
                 {"key": "current", "label": "Melhor preço", "values": [v for _, v in series]}
             ],
         }
+    item_summary = summary(item, timezone.localdate())
     return render(
         request,
         "shopping/item_detail.html",
         {
             "item": item,
-            "summary": summary(item, timezone.localdate()),
+            "summary": item_summary,
+            "compare_url": compare_url(request.user, item, item_summary),
+            "goal_url": goal_url(item, item_summary),
             "observations": item.observations.all(),
             "chart": chart,
             "series": series,
