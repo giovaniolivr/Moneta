@@ -124,6 +124,7 @@ class ProjectionData:
     projection: Projection
     accounts: list[Account]  # na ordem de exibição (cartões por último)
     unconfigured_cards: list[Account]  # cartões sem fechamento/vencimento/pagadora
+    variable: VariableEstimate  # gasto variável incluído (vazio se desligado)
 
 
 def _planned_events(user: UserLike, end: datetime.date) -> list[Event]:
@@ -166,7 +167,10 @@ def _pending_payment(
     return PendingPayment(billing.card_id, closing, due, max(0, owed - paid))
 
 
-def projection_data(user: UserLike, today: datetime.date, *, days: int = 92) -> ProjectionData:
+def projection_data(
+    user: UserLike, today: datetime.date, *, days: int = 92, include_variable: bool = True
+) -> ProjectionData:
+    """Com `include_variable`, soma o gasto variável médio (dia a dia, a partir de amanhã)."""
     end = today + datetime.timedelta(days=days)
     opening = account_balances(user, on=today)
     accounts = [
@@ -181,13 +185,154 @@ def projection_data(user: UserLike, today: datetime.date, *, days: int = 92) -> 
         if a.has_billing
     ]
     pending = [p for b in billings if (p := _pending_payment(user, b, today)) is not None]
+    events = _planned_events(user, end)
+    variable = variable_spending(user, today) if include_variable else VariableEstimate({}, 0)
+    known = {a.pk for a in accounts}
+    for account_id, daily in variable.daily_by_account().items():
+        if account_id not in known:
+            continue
+        day = today + datetime.timedelta(days=1)
+        while day <= end:
+            events.append(Event(day, account_id, -daily))
+            day += datetime.timedelta(days=1)
     projection = project(
         today=today,
         end=end,
         opening={a.pk: opening.get(a.pk, 0) for a in accounts},
-        events=_planned_events(user, end),
+        events=events,
         billings=billings,
         pending=pending,
     )
     unconfigured = [a for a in accounts if a.is_liability and not a.has_billing]
-    return ProjectionData(projection, accounts, unconfigured)
+    return ProjectionData(projection, accounts, unconfigured, variable)
+
+
+# Gasto variável e mês realizado vs previsto -------------------------------------
+
+VARIABLE_MONTHS = 3
+
+
+@dataclass(frozen=True)
+class VariableEstimate:
+    """Média mensal dos gastos que não vêm de recorrência nem de parcela (o "dia a dia")."""
+
+    monthly_by_account: dict[uuid.UUID, int]
+    months: int  # meses completos usados (0 = sem base para estimar)
+
+    @property
+    def monthly_cents(self) -> int:
+        return sum(self.monthly_by_account.values())
+
+    def daily_by_account(self) -> dict[uuid.UUID, int]:
+        return {k: round(v * 12 / 365) for k, v in self.monthly_by_account.items() if v}
+
+
+def variable_spending(user: UserLike, today: datetime.date) -> VariableEstimate:
+    first = analytics.first_activity_date(user)
+    current = month_start(today)
+    if first is None:
+        return VariableEstimate({}, 0)
+    since = max(first_full_month(first), add_months(current, -VARIABLE_MONTHS))
+    if since >= current:
+        return VariableEstimate({}, 0)
+    months = len(months_between(since, add_months(current, -1)))
+    rows = (
+        Transaction.objects.for_user(user)
+        .filter(
+            status=TransactionStatus.POSTED,
+            kind=TransactionKind.EXPENSE,
+            recurrence__isnull=True,
+            installment_plan__isnull=True,
+            date__gte=since,
+            date__lt=current,
+        )
+        .values("account_id")
+        .annotate(total=Sum("amount_cents"))
+        .order_by()
+    )
+    monthly = {r["account_id"]: r["total"] / months for r in rows}
+    # Recorrência criada depois de o usuário já lançar a despesa à mão (ex.: aluguel): esse
+    # histórico não está ligado à recorrência e entraria aqui E nas previstas. Em cada mês, a
+    # despesa não ligada mais parecida (mesma conta e categoria, valor ±20%) sai da média.
+    unlinked = Transaction.objects.for_user(user).filter(
+        status=TransactionStatus.POSTED,
+        kind=TransactionKind.EXPENSE,
+        recurrence__isnull=True,
+        installment_plan__isnull=True,
+        date__gte=since,
+        date__lt=current,
+    )
+    used: set[uuid.UUID] = set()
+    expense_recurrences = Recurrence.objects.for_user(user).filter(
+        is_active=True, kind=TransactionKind.EXPENSE, category__isnull=False
+    )
+    for rec in expense_recurrences:
+        if rec.category_id is None:
+            continue
+        low, high = rec.amount_cents * 0.8, rec.amount_cents * 1.2
+        candidates = unlinked.filter(
+            account_id=rec.account_id,
+            category_id=rec.category_id,
+            amount_cents__gte=low,
+            amount_cents__lte=high,
+        ).values_list("pk", "date", "amount_cents")
+        best: dict[datetime.date, tuple[uuid.UUID, int]] = {}
+        for pk, day, cents in candidates:
+            if pk in used:
+                continue
+            key = month_start(day)
+            if key not in best or abs(cents - rec.amount_cents) < abs(
+                best[key][1] - rec.amount_cents
+            ):
+                best[key] = (pk, cents)
+        for pk, cents in best.values():
+            used.add(pk)
+            monthly[rec.account_id] = monthly.get(rec.account_id, 0) - cents / months
+    return VariableEstimate({k: max(0, round(v)) for k, v in monthly.items()}, months)
+
+
+@dataclass(frozen=True)
+class MonthOutlook:
+    """Mês em andamento: realizado até hoje + o que ainda falta (previstas e variável)."""
+
+    income_cents: int
+    expense_cents: int
+    planned_income_cents: int  # previstas até o fim do mês (inclui vencidas não confirmadas)
+    planned_expense_cents: int
+    variable_cents: int  # gasto variável estimado para os dias que faltam
+    variable: VariableEstimate
+
+    @property
+    def net_cents(self) -> int:
+        return self.income_cents - self.expense_cents
+
+    @property
+    def projected_net_cents(self) -> int:
+        return (
+            self.net_cents
+            + self.planned_income_cents
+            - self.planned_expense_cents
+            - self.variable_cents
+        )
+
+
+def month_outlook(user: UserLike, today: datetime.date) -> MonthOutlook:
+    start, end = month_start(today), month_end(today)
+    realized = analytics.totals(user, start, today)
+    planned = Transaction.objects.for_user(user).filter(
+        status=TransactionStatus.PLANNED, date__lte=end
+    )
+    sums = planned.aggregate(
+        income=Sum("amount_cents", filter=Q(kind=TransactionKind.INCOME)),
+        expense=Sum("amount_cents", filter=Q(kind=TransactionKind.EXPENSE)),
+    )
+    variable = variable_spending(user, today)
+    days_left = (end - today).days  # a partir de amanhã: o dia de hoje já está acontecendo
+    return MonthOutlook(
+        income_cents=realized.income_cents,
+        expense_cents=realized.expense_cents,
+        planned_income_cents=sums["income"] or 0,
+        planned_expense_cents=sums["expense"] or 0,
+        variable_cents=round(variable.monthly_cents * 12 / 365 * days_left),
+        variable=variable,
+    )

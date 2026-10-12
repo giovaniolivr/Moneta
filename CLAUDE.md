@@ -4,7 +4,7 @@ Plataforma de gestão e planejamento financeiro pessoal. Uso próprio no início
 virar multiusuário e ganhar clientes web/mobile. Idioma do produto e da documentação: pt-BR.
 Código (identificadores) em inglês.
 
-**Status:** Fase 1 (entregas 0–13) concluída; PWA/mobile adiado para a etapa de uso real. Seguir o roadmap da §10 de
+**Status:** Fases 1 e 2 (entregas 0–20) concluídas; PWA/mobile adiado para a etapa de uso real. Seguir o roadmap da §10 de
 `docs/ARQUITETURA.md`, uma entrega por vez.
 
 ## Pendência: configurar o uso real (fazer junto com o usuário, quando ele pedir)
@@ -113,6 +113,9 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
 - Metas (`apps/goals`): progresso = saldo da conta (uma meta por conta). Ritmo = variação média do
   saldo nos últimos 3 meses fechados (desde a abertura da conta); capacidade = resultado médio dos
   meses fechados completos. Rendimento fica para a Fase 3. Seção renderizada no Planejamento.
+- Gasto variável: `planning.selectors.variable_spending()` (despesas sem recorrência/parcela,
+  descontando histórico manual que casa com uma recorrência). Usado em `projection_data()` e
+  `month_outlook()`. Resumo da dashboard: `dashboard.views.planning_summary()` (só período "mes").
 - Exclusão de movimentação é desfazível: `transaction_snapshot()` vai para a sessão e a mensagem
   ganha o botão "Desfazer" (`done(..., extra_tags="undo")` → `ledger:transaction_restore`).
 - Dashboard: `?mes=AAAA-MM` escolhe um mês (navegação ◂ ▸, nunca futuro); usuário sem nenhuma

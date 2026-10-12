@@ -57,7 +57,7 @@ pytest · ruff · mypy (strict)
 - [x] 17. Orçamentos mensais (por categoria ou do total) com ritmo pelo seu próprio padrão de gasto, projeção do mês e alerta nas Análises
 - [x] 18. Projeção de saldo dia a dia por conta, faturas previstas do cartão (fechamento, vencimento, conta pagadora) e alerta de saldo negativo
 - [x] 19. Metas sobre o saldo de uma conta: aporte mensal necessário, ritmo real de aportes, capacidade de poupança e data estimada
-- [ ] 20. Dashboard realizado × previsto
+- [x] 20. Dashboard realizado × previsto: resultado previsto do mês, saldo previsto, próximas previstas, orçamentos e metas; projeção com gasto do dia a dia estimado
 
 **Próximas fases:** simulador de investimentos e estratégias de compra → pesquisa de preços →
 assistente com IA.

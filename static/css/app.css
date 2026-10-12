@@ -1120,6 +1120,47 @@
     color: var(--color-muted);
   }
 
+  .planning-grid {
+    display: grid;
+    gap: var(--space-5);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .planning-block {
+    display: grid;
+    align-content: start;
+    gap: var(--space-2);
+  }
+
+  .compact-list {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-sm);
+  }
+
+  .compact-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .compact-list li > span:first-child {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-width: 0;
+    color: var(--color-ink);
+  }
+
+  @media (min-width: 1100px) {
+    .planning-grid {
+      grid-template-columns: 1.2fr 1fr 1fr;
+    }
+  }
+
   .budget-list {
     display: grid;
     gap: var(--space-1);

@@ -1,0 +1,66 @@
+{% load ui money ledger_ui %}{% with o=planning.outlook %}
+<section class="card span-full planning-summary" aria-labelledby="planning-title">
+  <div class="card-header">
+    <h2 id="planning-title">Planejamento</h2>
+    <span class="page-actions">
+      <a class="text-sm" href="{% url 'planning:projection' %}">Projeção</a>
+      <a class="text-sm" href="{% url 'planning:index' %}">Planejamento</a>
+    </span>
+  </div>
+
+  {% for n in planning.negatives %}
+    <div class="alert alert-error mb-4" role="alert">{% icon "circle-alert" "icon-sm" %}<span class="alert-text"><strong>{{ n.account.name }}</strong> deve ficar negativa em {{ n.first|date:"d/m" }}.</span><a class="btn btn-secondary btn-sm" href="{% url 'planning:projection' %}">Ver projeção</a></div>
+  {% endfor %}
+
+  <div class="planning-grid">
+    <div class="planning-block">
+      <p class="stat-label">Este mês: realizado × previsto</p>
+      <table class="data-table">
+        <tbody>
+          <tr><th scope="row">Resultado até hoje</th><td>{{ o.net_cents|brl_signed }}</td></tr>
+          <tr><th scope="row">Receitas previstas</th><td>{{ o.planned_income_cents|brl_signed }}</td></tr>
+          <tr><th scope="row">Despesas previstas</th><td>{% if o.planned_expense_cents %}-{% endif %}{{ o.planned_expense_cents|brl }}</td></tr>
+          <tr><th scope="row">Dia a dia estimado{% if not o.variable.months %} <span class="muted">(sem base)</span>{% endif %}</th><td>{% if o.variable_cents %}-{% endif %}{{ o.variable_cents|brl }}</td></tr>
+        </tbody>
+        <tfoot><tr><th scope="row">Resultado previsto do mês</th><td><strong>{{ o.projected_net_cents|brl_signed }}</strong></td></tr></tfoot>
+      </table>
+    </div>
+
+    <div class="planning-block">
+      <p class="stat-label">Em contas</p>
+      <p class="kpi-value">{{ planning.balance_month_end|brl }}</p>
+      <p class="stat-hint">previsto para {{ planning.month_last|date:"d/m" }} (hoje: {{ planning.balance_today|brl }})</p>
+      {% if planning.upcoming %}
+        <p class="stat-label mt-4">Próximos 7 dias</p>
+        <ul class="compact-list">
+          {% for tx in planning.upcoming %}
+            <li><span>{{ tx.date|date:"d/m" }} · {% if tx.description %}{{ tx.description }}{% elif tx.category %}{{ tx.category.name }}{% else %}Transferência{% endif %}</span><span class="amount {{ tx|tx_amount_class }}">{{ tx|tx_amount }}</span></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+
+    <div class="planning-block">
+      {% if planning.tight_budgets %}
+        <p class="stat-label">Orçamentos apertados</p>
+        <ul class="compact-list">
+          {% for row in planning.tight_budgets %}
+            <li><span>{% icon "circle-alert" "icon-sm" %} {{ row.budget.label }}</span><span>{% if row.progress.status == "over" %}estourado{% else %}ritmo acima{% endif %}</span></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      {% if planning.goals %}
+        <p class="stat-label{% if planning.tight_budgets %} mt-4{% endif %}">Metas</p>
+        <ul class="compact-list">
+          {% for row in planning.goals %}
+            <li><span>{{ row.goal.name }}</span><span>{{ row.progress.pct|stringformat:".0f" }}% · {% if row.progress.status == "achieved" %}alcançada{% elif row.progress.status == "on_track" %}no ritmo{% elif row.progress.status == "behind" %}abaixo do ritmo{% elif row.progress.status == "beyond_capacity" %}acima da capacidade{% else %}em andamento{% endif %}</span></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      {% if not planning.tight_budgets and not planning.goals %}
+        <p class="text-sm muted">Sem orçamentos apertados nem metas. <a href="{% url 'planning:index' %}">Criar uma meta ou um orçamento</a></p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endwith %}

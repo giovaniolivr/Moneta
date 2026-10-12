@@ -227,7 +227,8 @@ def projection(request: AuthenticatedHttpRequest) -> HttpResponse:
     """Saldo previsto por conta (fim de cada mês), alertas de saldo negativo e faturas."""
     today = timezone.localdate()
     materialize(request.user, today=today)
-    data = projection_data(request.user, today)
+    include_variable = request.GET.get("variavel") != "0"
+    data = projection_data(request.user, today, include_variable=include_variable)
     proj = data.projection
     end = proj.days[-1]
     checkpoints = [today]
@@ -284,5 +285,7 @@ def projection(request: AuthenticatedHttpRequest) -> HttpResponse:
             "chart": chart,
             "end": end,
             "today": today,
+            "include_variable": include_variable,
+            "variable": data.variable,
         },
     )

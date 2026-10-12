@@ -456,7 +456,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 17 ✅ | Orçamentos mensais por categoria + ritmo pro-rata + insight | alerta só com evidência |
 | 18 ✅ | Projeção de saldo por conta e fatura prevista do cartão | projeção usa só previstas confirmáveis |
 | 19 ✅ | Metas (`apps/goals`) sobre o saldo de uma conta | aporte mensal necessário vs. capacidade de poupança |
-| 20 | Dashboard realizado × previsto + polimento | |
+| 20 ✅ | Dashboard realizado × previsto + gasto variável estimado na projeção | resumo só para quem usa planejamento |
 
 ## 11. Preparação para os módulos futuros
 
@@ -511,6 +511,10 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
     saldo devedor no fechamento (menos o já pago depois dele); na projeção, ela sai da conta
     pagadora no vencimento. Faturas são **calculadas, nunca gravadas**. A projeção simula só as
     previstas (vencidas contam como hoje) — gastos variáveis ficam de fora e isso é declarado.
+16. Gasto variável estimado (projeção e resultado previsto do mês): média dos últimos 3 meses
+    completos das despesas **sem** recorrência nem parcela, por conta. Histórico lançado à mão
+    antes de virar recorrência é descontado por evidência (mesma conta e categoria, valor ±20%,
+    a mais próxima por mês, cada lançamento uma vez só). Ligado por padrão, com opção de desligar.
 13. Metas medem o progresso pelo **saldo de uma conta** (ex.: Caixinha); aportes são as
     transferências que o usuário já faz.
 

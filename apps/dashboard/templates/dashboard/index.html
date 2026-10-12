@@ -78,6 +78,9 @@
     </div>
   {% endif %}
 
+  {# ───── Planejamento: realizado × previsto ───── #}
+  {% if planning and dash.period == "mes" %}{% include "dashboard/_planning.html" %}{% endif %}
+
   {# ───── Análises automáticas ───── #}
   {% if dash.insights %}{% include "dashboard/_insights.html" %}{% endif %}
 
