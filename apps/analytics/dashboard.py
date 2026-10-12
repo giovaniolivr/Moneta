@@ -2,7 +2,7 @@
 
 import datetime
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
@@ -16,6 +16,7 @@ from apps.ledger.models import TransactionKind
 from . import selectors
 from .domain.insights import (
     AnalyticsContext,
+    BudgetSignal,
     Insight,
     InsightSettings,
     MonthData,
@@ -280,6 +281,7 @@ def build_insights(
     previous: Totals | None,
     expenses_by_category: dict[uuid.UUID, int],
     settings: InsightSettings | None = None,
+    budgets: Sequence[BudgetSignal] = (),
 ) -> list[Insight]:
     """Agrega o histórico necessário e avalia as regras de `domain.insights`."""
     first = selectors.first_activity_date(user)
@@ -325,6 +327,7 @@ def build_insights(
         first_date=first,
         weekday_window=window,
         daily_expenses=selectors.daily_expenses(user, window.start, window.end),
+        budgets=budgets,
         settings=settings,
     )
     return evaluate(ctx)
@@ -344,6 +347,7 @@ def build_dashboard(
     period: str,
     today: datetime.date,
     month: datetime.date | None = None,
+    budget_signals: Callable[[datetime.date], Sequence[BudgetSignal]] | None = None,
 ) -> Dashboard:
     """`month` (1º dia) escolhe um mês específico, navegável com ◂ ▸; sem ele vale `period`."""
     current_month = month_start(today)
@@ -498,6 +502,7 @@ def build_dashboard(
             current=current,
             previous=previous,
             expenses_by_category={b.id: b.cents for b in by_category if b.id is not None},
+            budgets=budget_signals(start) if single_month and budget_signals else (),
         )
         if comparison
         else []

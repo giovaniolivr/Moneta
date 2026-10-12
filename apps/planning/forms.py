@@ -4,14 +4,14 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-from apps.core.forms import apply_service_errors, has_data
+from apps.core.forms import MoneyField, apply_service_errors, has_data
 from apps.core.money import NBSP, format_brl
 from apps.ledger.forms import TransactionForm
 from apps.taxonomy.models import Category, CategoryKind
 from apps.users.models import User
 
 from .domain.schedule import Frequency
-from .models import InstallmentPlan, Recurrence
+from .models import Budget, InstallmentPlan, Recurrence
 from .services import RecurrenceData
 
 
@@ -117,3 +117,33 @@ class InstallmentPlanForm(forms.Form):
 
     def tag_names(self) -> list[str]:
         return [n for n in self.cleaned_data.get("tags", "").split(",") if n.strip()]
+
+
+class BudgetForm(forms.Form):
+    category = forms.ModelChoiceField(
+        label="Categoria",
+        queryset=Category.objects.none(),
+        required=False,
+        empty_label="Todas as despesas (total do mês)",
+    )
+    amount = MoneyField(label="Limite por mês")
+
+    def __init__(self, *args: Any, user: User, budget: Budget | None = None, **kwargs: Any) -> None:
+        if budget is not None and "initial" not in kwargs and not has_data(args, kwargs):
+            kwargs["initial"] = {
+                "amount": format_brl(budget.amount_cents).removeprefix(f"R${NBSP}")
+            }
+        super().__init__(*args, **kwargs)
+        self.budget = budget
+        if budget is not None:
+            del self.fields["category"]  # a categoria de um orçamento não muda
+        else:
+            taken = Budget.objects.for_user(user).filter(category__isnull=False)
+            self.fields["category"].queryset = (  # type: ignore[attr-defined]
+                Category.objects.for_user(user)
+                .filter(kind=CategoryKind.EXPENSE, is_archived=False)
+                .exclude(pk__in=taken.values("category_id"))
+            )
+        self.fields["amount"].widget.attrs.update({"class": "input", "inputmode": "decimal"})
+        if "category" in self.fields:
+            self.fields["category"].widget.attrs["class"] = "input"

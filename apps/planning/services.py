@@ -13,6 +13,7 @@ from django.db import transaction
 
 from apps.ledger.models import Transaction, TransactionKind, TransactionStatus
 from apps.ledger.services import TransactionData
+from apps.taxonomy.models import Category, CategoryKind
 from apps.taxonomy.services import get_or_create_tags
 from apps.users.models import User
 
@@ -20,7 +21,7 @@ from .domain.installments import due_dates as installment_dates
 from .domain.installments import label as installment_label
 from .domain.installments import split as split_installments
 from .domain.schedule import Frequency, occurrences
-from .models import InstallmentPlan, Recurrence
+from .models import Budget, InstallmentPlan, Recurrence
 
 HORIZON_DAYS = 92  # ~3 meses de previstas à frente
 SCHEDULE_FIELDS = ("frequency", "interval", "start_date", "end_date")
@@ -305,3 +306,31 @@ def delete_installment_plan(plan: InstallmentPlan) -> None:
     """Remove as parcelas previstas; as já realizadas ficam no histórico."""
     plan.transactions.filter(status=TransactionStatus.PLANNED).delete()
     plan.delete()
+
+
+# Orçamentos --------------------------------------------------------------------
+
+
+def _clean_budget(budget: Budget) -> Budget:
+    category = budget.category if budget.category_id else None
+    if category is not None:
+        if category.owner_id != budget.owner_id:
+            raise ValidationError({"category": "Categoria inválida."})
+        if category.kind != CategoryKind.EXPENSE:
+            raise ValidationError({"category": "Orçamento é só para categorias de despesa."})
+    budget.full_clean()
+    budget.save()
+    return budget
+
+
+def create_budget(user: User, *, category: Category | None, amount_cents: int) -> Budget:
+    return _clean_budget(Budget(owner=user, category=category, amount_cents=amount_cents))
+
+
+def update_budget(budget: Budget, *, amount_cents: int) -> Budget:
+    budget.amount_cents = amount_cents
+    return _clean_budget(budget)
+
+
+def delete_budget(budget: Budget) -> None:
+    budget.delete()

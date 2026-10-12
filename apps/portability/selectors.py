@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from apps.core.money import cents_to_decimal
 from apps.ledger.models import Account, Transaction
-from apps.planning.models import InstallmentPlan, Recurrence
+from apps.planning.models import Budget, InstallmentPlan, Recurrence
 from apps.taxonomy.models import Category, Tag
 
 from .schema import FORMAT, SCHEMA_VERSION, Payload
@@ -105,6 +105,10 @@ def export_payload(user: UserLike) -> Payload:
         .prefetch_related("tags")
         .order_by("created_at", "pk")
     ]
+    budgets = [
+        {"id": str(b.pk), "category": _str(b.category_id), "amount_cents": b.amount_cents}
+        for b in Budget.objects.for_user(user).order_by("created_at", "pk")
+    ]
     transactions = [
         {
             "id": str(tx.pk),
@@ -129,6 +133,7 @@ def export_payload(user: UserLike) -> Payload:
         "tags": tags,
         "recurrences": recurrences,
         "installment_plans": installment_plans,
+        "budgets": budgets,
         "transactions": transactions,
     }
 

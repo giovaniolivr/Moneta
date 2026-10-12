@@ -15,15 +15,18 @@ from apps.ledger.models import TransactionKind
 from apps.ledger.selectors import frequent_tags, last_used_account
 from apps.ledger.views import category_groups
 
-from .forms import InstallmentPlanForm, RecurrenceForm
-from .models import Recurrence
-from .selectors import list_installment_plans, list_recurrences
+from .forms import BudgetForm, InstallmentPlanForm, RecurrenceForm
+from .models import Budget, Recurrence
+from .selectors import budget_rows, list_budgets, list_installment_plans, list_recurrences
 from .services import (
+    create_budget,
     create_recurrence,
+    delete_budget,
     delete_installment_plan,
     delete_recurrence,
     materialize,
     set_recurrence_active,
+    update_budget,
     update_installment_plan,
     update_recurrence,
 )
@@ -44,6 +47,8 @@ def index(request: AuthenticatedHttpRequest) -> HttpResponse:
         request,
         "planning/index.html",
         {
+            "budgets": budget_rows(request.user, today, today),
+            "month": today,
             "plans": list_installment_plans(request.user),
             "recurrences": [(r, r.next_date(today)) for r in recurrences],
             "monthly_expense": monthly(TransactionKind.EXPENSE),
@@ -156,3 +161,53 @@ def installment_delete(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> Http
     label = plan.description
     delete_installment_plan(plan)
     return done(request, f"Compra parcelada “{label}” excluída.", fallback=INDEX)
+
+
+def _budget_form(
+    request: AuthenticatedHttpRequest, form: BudgetForm, budget: Budget | None
+) -> HttpResponse:
+    return render_drawer(
+        request,
+        "planning/_budget_form.html",
+        {"form": form, "budget": budget},
+        title="Editar orçamento" if budget else "Novo orçamento",
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def budget_create(request: AuthenticatedHttpRequest) -> HttpResponse:
+    form = BudgetForm(request.POST or None, user=request.user)
+    if request.method == "POST" and form.is_valid():
+        try:
+            budget = create_budget(
+                request.user,
+                category=form.cleaned_data.get("category"),
+                amount_cents=form.cleaned_data["amount"],
+            )
+        except ValidationError as error:
+            apply_service_errors(form, error, {"amount_cents": "amount"})
+        else:
+            return done(request, f"Orçamento de “{budget.label}” criado.", fallback=INDEX)
+    return _budget_form(request, form, None)
+
+
+@require_http_methods(["GET", "POST"])
+def budget_update(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpResponse:
+    budget = get_object_or_404(list_budgets(request.user), pk=pk)
+    form = BudgetForm(request.POST or None, user=request.user, budget=budget)
+    if request.method == "POST" and form.is_valid():
+        try:
+            update_budget(budget, amount_cents=form.cleaned_data["amount"])
+        except ValidationError as error:
+            apply_service_errors(form, error, {"amount_cents": "amount"})
+        else:
+            return done(request, "Orçamento atualizado.", fallback=INDEX)
+    return _budget_form(request, form, budget)
+
+
+@require_POST
+def budget_delete(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpResponse:
+    budget = get_object_or_404(list_budgets(request.user), pk=pk)
+    label = budget.label
+    delete_budget(budget)
+    return done(request, f"Orçamento de “{label}” excluído.", fallback=INDEX)

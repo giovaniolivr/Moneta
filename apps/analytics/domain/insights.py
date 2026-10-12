@@ -108,6 +108,20 @@ class MonthData:
 
 
 @dataclass(frozen=True)
+class BudgetSignal:
+    """Andamento de um orçamento no mês (calculado fora; aqui só vira análise)."""
+
+    label: str
+    category_id: uuid.UUID | None  # None = todas as despesas
+    limit_cents: int
+    spent_cents: int
+    expected_cents: int  # quanto "deveria" estar gasto até hoje
+    projected_cents: int | None
+    status: Literal["ok", "pace", "over"]
+    method: Literal["history", "linear", "closed"]
+
+
+@dataclass(frozen=True)
 class AnalyticsContext:
     today: datetime.date
     current: DateRange  # recorte efetivo (até hoje)
@@ -122,6 +136,7 @@ class AnalyticsContext:
     first_date: datetime.date | None  # primeira receita/despesa do usuário
     weekday_window: DateRange | None = None
     daily_expenses: Mapping[datetime.date, int] = field(default_factory=dict)
+    budgets: Sequence[BudgetSignal] = ()
     settings: InsightSettings = field(default_factory=InsightSettings)
 
     @property
@@ -495,8 +510,83 @@ class WeekdayRule:
         ]
 
 
+_METHOD_TEXT = {
+    "history": "Seu padrão de gasto até este dia nos meses anteriores",
+    "linear": "Proporcional aos dias do mês (ainda sem histórico)",
+    "closed": "Mês fechado",
+}
+
+
+class BudgetRule:
+    """Orçamento estourado ou no ritmo de estourar (com o esperado e a projeção)."""
+
+    id = "orcamento"
+    title = "Orçamento"
+
+    def evaluate(self, ctx: AnalyticsContext) -> list[Insight]:
+        if not ctx.single_month or not ctx.budgets:
+            return []
+        period = _period_phrase(ctx)
+        found = []
+        for b in ctx.budgets:
+            if b.status == "ok":
+                continue
+            subject = "Orçamento do mês" if b.category_id is None else f"Orçamento de {b.label}"
+            if b.status == "over":
+                message = (
+                    f"{subject} estourado: {_brl(b.spent_cents)} de {_brl(b.limit_cents)} "
+                    f"{period} ({format_pct(percent(b.spent_cents, b.limit_cents))})."
+                )
+            else:
+                message = (
+                    f"{subject} no ritmo de passar do limite: {_brl(b.spent_cents)} {period}, "
+                    f"contra {_brl(b.expected_cents)} esperados até agora; projeção de "
+                    f"{_brl(b.projected_cents or 0)} para um limite de {_brl(b.limit_cents)}."
+                )
+            evidence = [
+                Evidence("Limite mensal", b.limit_cents),
+                Evidence(f"Gasto {period}", b.spent_cents),
+                Evidence("Esperado até agora", b.expected_cents),
+                Evidence("Projeção para o mês", b.projected_cents),
+                Evidence("Como o esperado é calculado", _METHOD_TEXT[b.method], "text"),
+            ]
+            ids = [b.category_id] if b.category_id else []
+            found.append(
+                Insight(
+                    self.id,
+                    self.title,
+                    "attention",
+                    message,
+                    tuple(evidence),
+                    _expense_filter(ctx.current, ids),
+                )
+            )
+        if not found and not ctx.partial:
+            count = len(ctx.budgets)
+            subject = "O orçamento ficou" if count == 1 else f"Todos os {count} orçamentos ficaram"
+            found.append(
+                Insight(
+                    self.id,
+                    self.title,
+                    "positive",
+                    f"{subject} dentro do limite {period}.",
+                    tuple(
+                        Evidence(
+                            f"{b.label}: gasto / limite",
+                            f"{_brl(b.spent_cents)} / {_brl(b.limit_cents)}",
+                            "text",
+                        )
+                        for b in ctx.budgets
+                    ),
+                    _expense_filter(ctx.current),
+                )
+            )
+        return found[: ctx.settings.max_per_rule]
+
+
 DEFAULT_RULES: tuple[InsightRule, ...] = (
     MonthSummaryRule(),
+    BudgetRule(),
     AboveAverageRule(),
     TrendRule(),
     ConcentrationRule(),

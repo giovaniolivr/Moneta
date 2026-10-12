@@ -348,6 +348,7 @@ def seed_demo(
             )
 
     _seed_recurrences(user, cat, today=today, start=start, accounts=(checking, card, savings))
+    _seed_budgets(user, cat)
     return DemoSummary(accounts=4, transactions=count, first_date=start, last_date=today)
 
 
@@ -391,3 +392,11 @@ def _seed_recurrences(
             ),
             today=today,
         )
+
+
+def _seed_budgets(user: User, cat: dict[str, Category]) -> None:
+    from apps.planning.services import create_budget
+
+    create_budget(user, category=None, amount_cents=600_000)
+    for name, cents in (("Alimentação", 150_000), ("Lazer", 40_000), ("Transporte", 60_000)):
+        create_budget(user, category=cat[name], amount_cents=cents)

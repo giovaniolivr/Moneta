@@ -24,7 +24,7 @@ from django.db import models, transaction
 
 from apps.core.names import InvalidNameError, clean_display_name, normalize_name
 from apps.ledger.models import Account, Transaction
-from apps.planning.models import InstallmentPlan, Recurrence
+from apps.planning.models import Budget, InstallmentPlan, Recurrence
 from apps.taxonomy.models import Category, Tag
 from apps.taxonomy.services import add_tag_alias
 from apps.users.models import User
@@ -57,6 +57,7 @@ class ImportReport:
     tags: Counts = field(default_factory=Counts)
     recurrences: Counts = field(default_factory=Counts)
     installment_plans: Counts = field(default_factory=Counts)
+    budgets: Counts = field(default_factory=Counts)
     transactions: Counts = field(default_factory=Counts)
 
     def sections(self) -> list[tuple[str, Counts]]:
@@ -66,6 +67,7 @@ class ImportReport:
             ("Tags", self.tags),
             ("Recorrências", self.recurrences),
             ("Compras parceladas", self.installment_plans),
+            ("Orçamentos", self.budgets),
             ("Movimentações", self.transactions),
         ]
 
@@ -232,6 +234,7 @@ class _Importer:
         self.each(
             self.items(payload, "installment_plans", "Compra parcelada"), self.installment_plan
         )
+        self.each(self.items(payload, "budgets", "Orçamento"), self.budget)
         self.each(self.items(payload, "transactions", "Movimentação"), self.movement)
 
     def account(self, where: str, item: Item) -> None:
@@ -380,6 +383,22 @@ class _Importer:
         }
         counts = self.report.installment_plans
         self.plans[pk] = self.upsert_by_id(InstallmentPlan, pk, values, tags, counts, where)
+
+    def budget(self, where: str, item: Item) -> None:
+        """Upsert pelo UUID; sem ele, o orçamento da mesma categoria (ou do total) é reusado."""
+        pk = self.uuid_field(item, "id", where)
+        if self.owned_by_other(Budget, pk):
+            raise self.error(where, "o identificador pertence a outro usuário deste servidor.")
+        category = self.ref(self.categories, Category, item, "category", where, "categoria")
+        amount = self.field(item, "amount_cents", where, int)
+        own = Budget.objects.for_user(self.user)
+        obj = own.filter(pk=pk).first() or own.filter(category=category).first()
+        created = obj is None
+        if obj is None:
+            obj = Budget(id=pk, owner=self.user, category=category)
+        changed = obj.amount_cents != amount
+        obj.amount_cents = amount
+        self.save(obj, self.report.budgets, created=created, changed=changed, where=where)
 
     def optional_date(self, item: Item, key: str, where: str) -> datetime.date | None:
         return None if item.get(key) is None else self.date_field(item, key, where)

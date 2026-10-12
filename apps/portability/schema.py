@@ -12,7 +12,7 @@ from collections.abc import Callable
 from typing import Any
 
 FORMAT = "moneta"
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 Payload = dict[str, Any]
 
@@ -37,10 +37,17 @@ def _v3_to_v4(payload: Payload) -> Payload:
     return payload
 
 
+def _v4_to_v5(payload: Payload) -> Payload:
+    """v5: seção `budgets` (limite mensal por categoria ou do total)."""
+    payload.setdefault("budgets", [])
+    return payload
+
+
 MIGRATIONS: dict[int, Callable[[Payload], Payload]] = {
     1: _v1_to_v2,
     2: _v2_to_v3,
     3: _v3_to_v4,
+    4: _v4_to_v5,
 }
 SECTIONS = (
     "accounts",
@@ -48,6 +55,7 @@ SECTIONS = (
     "tags",
     "recurrences",
     "installment_plans",
+    "budgets",
     "transactions",
 )
 

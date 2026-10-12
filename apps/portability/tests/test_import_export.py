@@ -18,9 +18,10 @@ from apps.ledger.services import (
     create_transaction,
     ensure_default_account,
 )
-from apps.planning.models import InstallmentPlan, Recurrence
+from apps.planning.models import Budget, InstallmentPlan, Recurrence
 from apps.planning.services import (
     RecurrenceData,
+    create_budget,
     create_installment_plan,
     create_recurrence,
 )
@@ -104,6 +105,8 @@ def data(user: Any) -> dict[str, Any]:
         count=10,
         today=timezone.localdate(),
     )
+    create_budget(user, category=cats["Alimentação"], amount_cents=150_000)
+    create_budget(user, category=None, amount_cents=600_000)
     set_category_archived(cats["Lazer"], archived=True)
     return {"checking": checking, "card": card, "savings": savings, "cats": cats}
 
@@ -116,6 +119,7 @@ def _wipe(user: Any) -> None:
     Transaction.objects.for_user(user).delete()
     Recurrence.objects.for_user(user).delete()
     InstallmentPlan.objects.for_user(user).delete()
+    Budget.objects.for_user(user).delete()
     TagAlias.objects.for_user(user).delete()
     Tag.objects.for_user(user).delete()
     Account.objects.for_user(user).delete()
@@ -132,6 +136,7 @@ def test_round_trip_preserves_everything(user: Any, data: Any) -> None:
 
     assert report.recurrences.created == 1
     assert report.installment_plans.created == 1
+    assert report.budgets.created == 2
     assert Transaction.objects.for_user(user).filter(installment_number=10).exists()
     assert report.transactions.created == len(before["transactions"])
     assert Transaction.objects.for_user(user).filter(recurrence__isnull=False).exists()
@@ -291,3 +296,14 @@ class TestFileFormat:
         payload = parse_file(json.dumps(raw).encode())
         assert payload["schema_version"] == schema.SCHEMA_VERSION
         assert payload["transactions"][0]["status"] == "posted"
+
+
+def test_budget_matches_existing_category(user: Any, data: Any) -> None:
+    """Arquivo de outra instalação: UUID novo, mas a categoria já tem orçamento → atualiza."""
+    payload = export_payload(user)
+    food = next(b for b in payload["budgets"] if b["category"])
+    food["id"] = str(uuid.uuid4())
+    food["amount_cents"] = 175_000
+    report = import_payload(user, payload)
+    assert (report.budgets.created, report.budgets.updated) == (0, 1)
+    assert Budget.objects.for_user(user).get(category__isnull=False).amount_cents == 175_000

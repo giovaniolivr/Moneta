@@ -453,7 +453,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 14 ✅ | Movimentações **previstas × realizadas** (`status`), lista "Previstas", "A confirmar" | análises/saldos só com realizadas; data futura só em prevista |
 | 15 ✅ | Recorrências (`apps/planning`): mensal/semanal/anual, gera previstas num horizonte | confirmar/ajustar/pular; idempotente |
 | 16 ✅ | Parcelamentos no cartão: compra em N× gera N parcelas previstas | cada parcela conta no seu mês |
-| 17 | Orçamentos mensais por categoria + ritmo pro-rata + insight | alerta só com evidência |
+| 17 ✅ | Orçamentos mensais por categoria + ritmo pro-rata + insight | alerta só com evidência |
 | 18 | Projeção de saldo por conta e fatura prevista do cartão | projeção usa só previstas confirmáveis |
 | 19 | Metas (`apps/goals`) sobre o saldo de uma conta | aporte mensal necessário vs. capacidade de poupança |
 | 20 | Dashboard realizado × previsto + polimento | |
@@ -503,6 +503,10 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
     Parcelas com data até hoje nascem realizadas (a compra aconteceu); as futuras, previstas.
 12. Recorrências e parcelas viram **previstas**; só entram nas análises quando o usuário
     **confirma** (pode ajustar valor/data ou pular). Nada é lançado sozinho.
+14. Orçamento: o "esperado até hoje" segue a **fração que o próprio usuário costuma gastar até
+    aquele dia** nos meses completos anteriores (até 3), não uma reta — gastos fixos do começo do
+    mês não geram alarme falso. Sem 2 meses de histórico, usa a reta e declara isso. Projeção só
+    a partir do 7º dia; "ritmo acima" exige excesso projetado ≥ R$ 20.
 13. Metas medem o progresso pelo **saldo de uma conta** (ex.: Caixinha); aportes são as
     transferências que o usuário já faz.
 

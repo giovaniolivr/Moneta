@@ -105,6 +105,9 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
 - Parcelamento: campo `installments` do `TransactionForm` (só na criação de despesa) →
   `create_installment_plan()`; parcelas são movimentações com `installment_plan`/`installment_number`.
   O valor do formulário é o TOTAL (`planning/domain/installments.split`). Export no formato v4.
+- Orçamentos: `planning/domain/budget.py` (puro) + `planning.selectors.budget_rows()`. A regra
+  `BudgetRule` (analytics) recebe `BudgetSignal`s injetados pela view da dashboard
+  (`build_dashboard(..., budget_signals=)`) — o `analytics` não importa o `planning`.
 - Exclusão de movimentação é desfazível: `transaction_snapshot()` vai para a sessão e a mensagem
   ganha o botão "Desfazer" (`done(..., extra_tags="undo")` → `ledger:transaction_restore`).
 - Dashboard: `?mes=AAAA-MM` escolhe um mês (navegação ◂ ▸, nunca futuro); usuário sem nenhuma

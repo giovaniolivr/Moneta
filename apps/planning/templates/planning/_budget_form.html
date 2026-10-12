@@ -1,0 +1,35 @@
+{% load ui %}
+<form class="stack" method="post" action="{% if budget %}{% url 'planning:budget_update' budget.pk %}{% else %}{% url 'planning:budget_create' %}{% endif %}" novalidate>
+  {% csrf_token %}
+  {% include "components/drawer_header.html" %}
+  {% if form.non_field_errors %}<div class="alert alert-error" role="alert">{% icon "circle-alert" "icon-sm" %}{{ form.non_field_errors|join:" " }}</div>{% endif %}
+  {% if budget %}
+    <p class="text-sm muted">{{ budget.label }}</p>
+  {% else %}
+    <div class="field">
+      <label for="{{ form.category.id_for_label }}">{{ form.category.label }}</label>
+      {{ form.category }}
+      {% for error in form.category.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+    </div>
+  {% endif %}
+  <div class="field">
+    <label for="{{ form.amount.id_for_label }}">{{ form.amount.label }}</label>
+    <div class="amount-wrap"><span class="amount-prefix" aria-hidden="true">R$</span>{{ form.amount }}</div>
+    {% for error in form.amount.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
+  <p class="field-help">Vale para todos os meses. O ritmo esperado segue o seu padrão de gasto dos meses anteriores — o aluguel do dia 6 não faz o orçamento parecer estourado no dia 7.</p>
+  <div class="form-actions form-actions-single">
+    <button class="btn btn-primary" type="submit">{% if budget %}Salvar alterações{% else %}Criar orçamento{% endif %}</button>
+  </div>
+</form>
+
+{% if budget %}
+  <details class="danger-zone">
+    <summary>{% icon "trash-2" "icon-sm" %}Excluir orçamento</summary>
+    <form method="post" action="{% url 'planning:budget_delete' budget.pk %}">
+      {% csrf_token %}
+      <p class="text-sm">As movimentações não são afetadas.</p>
+      <button class="btn btn-danger" type="submit">Confirmar exclusão</button>
+    </form>
+  </details>
+{% endif %}

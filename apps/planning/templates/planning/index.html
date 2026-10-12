@@ -1,5 +1,5 @@
 {% extends "layouts/app.html" %}
-{% load ui money ledger_ui %}
+{% load ui money ledger_ui planning_ui %}
 
 {% block title %}Planejamento{% endblock %}
 
@@ -29,6 +29,47 @@
     </div>
   </div>
 {% endif %}
+
+<section class="card mb-4" aria-labelledby="budgets-title">
+  <div class="card-header">
+    <h2 id="budgets-title">Orçamentos de {{ month|date:"F"|lower }}</h2>
+    <a class="btn btn-secondary btn-sm" href="{% url 'planning:budget_create' %}" data-drawer>{% icon "plus" "icon-sm" %}Novo orçamento</a>
+  </div>
+  {% if budgets %}
+    <ul class="budget-list">
+      {% for row in budgets %}
+        {% with p=row.progress %}
+          <li>
+            <a class="budget-row" href="{% url 'planning:budget_update' row.budget.pk %}" data-drawer>
+              <span class="budget-head">
+                <span class="budget-name">{% if row.budget.category %}<span class="bar-icon slot-{{ row.budget.category.color }}">{% icon row.budget.category.icon|default:"wallet" "icon-sm" %}</span>{% endif %}{{ row.budget.label }}</span>
+                <span class="budget-value"><strong>{{ p.spent_cents|brl }}</strong> <span class="muted">de {{ p.limit_cents|brl }}</span></span>
+              </span>
+              <svg class="bar-track budget-track" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <rect class="budget-fill budget-fill-{{ p.status }}" width="{{ p.used_pct|bar_width }}" height="8"></rect>
+                {% if p.partial %}<line class="budget-expected" x1="{{ p.expected_share|share_x }}" x2="{{ p.expected_share|share_x }}" y1="0" y2="8"></line>{% endif %}
+              </svg>
+              <span class="budget-status budget-status-{{ p.status }}">
+                {% if p.status == "over" %}{% icon "circle-alert" "icon-sm" %}Estourado em {{ p.remaining_cents|budget_abs|brl }}
+                {% elif p.status == "pace" %}{% icon "circle-alert" "icon-sm" %}Ritmo acima: projeção de {{ p.projected_cents|brl }} no mês
+                {% elif p.partial %}{% icon "circle-check" "icon-sm" %}Dentro do ritmo · restam {{ p.remaining_cents|brl }}{% if p.daily_allowance_cents %} ({{ p.daily_allowance_cents|brl }}/dia){% endif %}
+                {% else %}{% icon "circle-check" "icon-sm" %}Dentro do limite{% endif %}
+                {% if p.method == "linear" %}<span class="muted"> · esperado proporcional aos dias (sem histórico)</span>{% endif %}
+              </span>
+            </a>
+          </li>
+        {% endwith %}
+      {% endfor %}
+    </ul>
+    <p class="text-sm muted">A marca na barra é quanto você costuma ter gastado até hoje, pelo seu padrão nos meses anteriores.</p>
+  {% else %}
+    <div class="empty-state">
+      {% icon "piggy-bank" %}
+      <p class="empty-state-title">Nenhum orçamento</p>
+      <p class="text-sm">Defina um limite mensal para uma categoria (ou para o total) e acompanhe o ritmo ao longo do mês.</p>
+    </div>
+  {% endif %}
+</section>
 
 {% if plans %}
   <section class="card mb-4" aria-labelledby="plans-title">

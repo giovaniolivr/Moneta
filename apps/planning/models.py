@@ -164,3 +164,51 @@ class InstallmentPlan(OwnedModel):
 
     def __str__(self) -> str:
         return f"{self.description} ({self.count}x)"
+
+
+class Budget(OwnedModel):
+    """Limite mensal de gasto: por categoria de despesa, ou do total (`category` vazio).
+
+    Vale para todos os meses. O acompanhamento (`planning/domain/budget.py`) compara o ritmo
+    com o padrão de gasto do próprio usuário.
+    """
+
+    category = models.ForeignKey(
+        "taxonomy.Category",
+        on_delete=models.CASCADE,
+        related_name="budgets",
+        null=True,
+        blank=True,
+        verbose_name="categoria",
+    )
+    amount_cents = models.BigIntegerField("limite mensal (centavos)")
+
+    class Meta:
+        verbose_name = "orçamento"
+        verbose_name_plural = "orçamentos"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount_cents__gt=0, amount_cents__lte=MAX_CENTS),
+                name="budget_amount_positive",
+                violation_error_message="O limite deve ser maior que zero.",
+            ),
+            models.UniqueConstraint(
+                fields=["owner", "category"],
+                condition=models.Q(category__isnull=False),
+                name="budget_unique_category",
+                violation_error_message="Esta categoria já tem orçamento.",
+            ),
+            models.UniqueConstraint(
+                fields=["owner"],
+                condition=models.Q(category__isnull=True),
+                name="budget_unique_total",
+                violation_error_message="Já existe um orçamento para o total do mês.",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return self.label
+
+    @property
+    def label(self) -> str:
+        return self.category.name if self.category_id and self.category else "Todas as despesas"
