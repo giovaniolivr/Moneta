@@ -6,7 +6,8 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.utils import timezone
 
-from apps.core.forms import MoneyField
+from apps.core.forms import MoneyField, apply_service_errors
+from apps.core.forms import has_data as _has_data
 from apps.core.money import NBSP, format_brl
 from apps.taxonomy.models import Category, Tag
 from apps.taxonomy.selectors import list_tags
@@ -15,9 +16,6 @@ from apps.users.models import User
 from .filters import DEFAULT_PERIOD, PERIOD_CHOICES, TransactionFilter, period_range
 from .models import Account, AccountKind, PaymentMethod, Transaction, TransactionKind
 from .services import TransactionData
-
-# Campos do model/service → campos do formulário (para devolver erros ao lugar certo).
-_SERVICE_FIELD_MAP = {"amount_cents": "amount", "__all__": None}
 
 
 class TransactionForm(forms.Form):
@@ -67,7 +65,7 @@ class TransactionForm(forms.Form):
     def __init__(
         self, *args: Any, user: User, instance: Transaction | None = None, **kwargs: Any
     ) -> None:
-        if instance is not None and "initial" not in kwargs and not args:
+        if instance is not None and "initial" not in kwargs and not _has_data(args, kwargs):
             kwargs["initial"] = self.initial_from(instance)
         super().__init__(*args, **kwargs)
         self.user = user
@@ -155,12 +153,7 @@ class TransactionForm(forms.Form):
 
     def add_service_errors(self, error: ValidationError) -> None:
         """Erros de regra de negócio (service/model) exibidos no campo correspondente."""
-        if not hasattr(error, "error_dict"):
-            self.add_error(None, error)
-            return
-        for field, messages in error.message_dict.items():
-            target = _SERVICE_FIELD_MAP.get(field, field)
-            self.add_error(target if target in self.fields else None, messages)
+        apply_service_errors(self, error, {"amount_cents": "amount"})
 
 
 class TransactionFilterForm(forms.Form):
@@ -238,3 +231,43 @@ class TransactionFilterForm(forms.Form):
             payment_methods=tuple(data.get("pagamento") or ()),
             search=(data.get("q") or "").strip(),
         )
+
+
+class AccountForm(forms.Form):
+    """Conta. No cartão de crédito o saldo inicial é digitado como "fatura em aberto" (positivo)
+    e guardado como dívida (negativo)."""
+
+    name = forms.CharField(label="Nome", max_length=60)
+    kind = forms.ChoiceField(
+        label="Tipo", choices=AccountKind.choices, initial=AccountKind.CHECKING
+    )
+    opening_balance = MoneyField(label="Saldo inicial", required=False, allow_zero=True)
+    opening_date = forms.DateField(
+        label="Na data",
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+        help_text="O saldo vale no início deste dia; lançamentos anteriores ficam só no histórico.",
+    )
+
+    def __init__(self, *args: Any, instance: Account | None = None, **kwargs: Any) -> None:
+        if instance is not None and "initial" not in kwargs and not _has_data(args, kwargs):
+            balance = instance.opening_balance_cents
+            kwargs["initial"] = {
+                "name": instance.name,
+                "kind": instance.kind,
+                "opening_balance": -balance if instance.is_liability else balance,
+                "opening_date": instance.opening_date,
+            }
+        super().__init__(*args, **kwargs)
+        self.instance = instance
+        self.fields["opening_date"].initial = timezone.localdate
+        for name in ("name", "kind", "opening_balance", "opening_date"):
+            self.fields[name].widget.attrs["class"] = "input"
+        if instance is not None:
+            # O tipo não muda depois de criada (mudaria o sentido do histórico).
+            self.fields["kind"].required = False
+            self.fields["kind"].disabled = True
+
+    def opening_balance_cents(self) -> int:
+        cents: int = self.cleaned_data.get("opening_balance") or 0
+        kind = self.instance.kind if self.instance else self.cleaned_data.get("kind")
+        return -cents if kind == AccountKind.CREDIT_CARD else cents

@@ -1,0 +1,79 @@
+{% load ui %}
+<form class="tx-form" method="post" action="{% if category %}{% url 'taxonomy:category_update' category.pk %}{% else %}{% url 'taxonomy:category_create' %}{% endif %}" novalidate>
+  {% csrf_token %}
+  {% include "components/drawer_header.html" %}
+
+  {% if action_error %}
+    <div class="alert alert-error" role="alert">{% icon "circle-alert" "icon-sm" %}{{ action_error }}</div>
+  {% endif %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-error" role="alert">{% icon "circle-alert" "icon-sm" %}{{ form.non_field_errors|join:" " }}</div>
+  {% endif %}
+
+  <div class="field">
+    <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+    {{ form.name }}
+    {% for error in form.name.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
+
+  {% if category %}
+    <p class="text-sm muted">Tipo: {{ category.get_kind_display }} (não muda depois de criada)</p>
+  {% else %}
+    <fieldset class="segmented segmented-2" aria-label="Tipo">
+      {% for option in form.kind %}
+        <label class="segmented-option segmented-{{ option.data.value }}">
+          <input type="radio" name="{{ form.kind.html_name }}" value="{{ option.data.value }}"{% if option.data.selected %} checked{% endif %}>
+          <span>{{ option.choice_label }}</span>
+        </label>
+      {% endfor %}
+    </fieldset>
+  {% endif %}
+
+  <fieldset class="field">
+    <legend>{{ form.color.label }}</legend>
+    <div class="swatches">
+      {% for option in form.color %}
+        <label class="swatch slot-{{ option.data.value }}" title="{{ option.choice_label }}">
+          <input type="radio" name="{{ form.color.html_name }}" value="{{ option.data.value }}"{% if option.data.selected %} checked{% endif %}>
+          <span class="sr-only">{{ option.choice_label }}</span>
+        </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <fieldset class="field">
+    <legend>{{ form.icon.label }}</legend>
+    <div class="icon-picker">
+      {% for option in form.icon %}
+        <label class="icon-option" title="{{ option.choice_label }}">
+          <input type="radio" name="{{ form.icon.html_name }}" value="{{ option.data.value }}"{% if option.data.selected %} checked{% endif %}>
+          {% icon option.data.value %}<span class="sr-only">{{ option.choice_label }}</span>
+        </label>
+      {% endfor %}
+    </div>
+    {% for error in form.icon.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </fieldset>
+
+  <div class="form-actions form-actions-single">
+    <button class="btn btn-primary" type="submit">{% if category %}Salvar alterações{% else %}Criar categoria{% endif %}</button>
+  </div>
+</form>
+
+{% if category %}
+  <div class="drawer-secondary-actions">
+    <form method="post" action="{% url 'taxonomy:category_archive' category.pk %}">
+      {% csrf_token %}
+      <button class="btn btn-secondary" type="submit">
+        {% if category.is_archived %}{% icon "archive-restore" "icon-sm" %}Restaurar{% else %}{% icon "archive" "icon-sm" %}Arquivar{% endif %}
+      </button>
+    </form>
+  </div>
+  <details class="danger-zone">
+    <summary>{% icon "trash-2" "icon-sm" %}Excluir categoria</summary>
+    <form method="post" action="{% url 'taxonomy:category_delete' category.pk %}">
+      {% csrf_token %}
+      <p class="text-sm">Só é possível excluir categorias sem movimentações. As demais podem ser arquivadas: somem dos formulários, mas o histórico continua.</p>
+      <button class="btn btn-danger" type="submit">Confirmar exclusão</button>
+    </form>
+  </details>
+{% endif %}

@@ -165,6 +165,7 @@ class TestCreate:
         with pytest.raises(ValidationError, match="arquivada"):
             create_transaction(user, expense(checking, food, 100))
         set_category_archived(food, archived=False)
+        create_account(user, name="Outra", kind=AccountKind.CASH)
         set_account_archived(checking, archived=True)
         with pytest.raises(ValidationError, match="arquivada"):
             create_transaction(user, expense(checking, food, 100))
@@ -211,6 +212,7 @@ class TestUpdateAndDelete:
         self, user: Any, checking: Account, food: Category
     ) -> None:
         tx = create_transaction(user, expense(checking, food, 100))
+        create_account(user, name="Outra", kind=AccountKind.CASH)
         set_account_archived(checking, archived=True)
         update_transaction(tx, expense(checking, food, 200))
         assert tx.amount_cents == 200

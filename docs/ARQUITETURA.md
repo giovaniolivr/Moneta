@@ -410,7 +410,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 5 ✅ | Layout base + tokens (temas escuro/claro) + componentes | tela navegável no celular; contraste AA testado |
 | 6 ✅ | Formulário rápido de nova movimentação (painel lateral / inferior) | registro em < 10 s no celular |
 | 7 ✅ | Lista de movimentações + `TransactionFilter` | filtros combináveis, edição, exclusão |
-| 7b | Telas de categorias, tags (apelidos, mesclar) e contas | gestão completa sem usar o admin |
+| 7b ✅ | Telas de categorias, tags (apelidos, mesclar) e contas | gestão completa sem usar o admin |
 | 8 | `analytics` selectors + metrics | KPIs batem com cálculo manual em fixtures |
 | 9 | Dashboard: KPIs + 3 gráficos principais + drill-down | clique leva à lista filtrada |
 | 10 | Insights (regras + "dados insuficientes") | cada regra com teste |

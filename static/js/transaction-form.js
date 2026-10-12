@@ -1,6 +1,13 @@
 // Comportamento do formulário de movimentação (página inteira ou painel lateral).
 // Usa delegação de eventos: funciona também no conteúdo injetado depois pelo painel.
 (() => {
+  // Formulário de conta: "Saldo inicial" vira "Fatura em aberto" no cartão de crédito.
+  document.addEventListener("change", (event) => {
+    const select = event.target;
+    const form = select.closest("form[data-account-form]");
+    if (form && select.name === "kind") form.dataset.kind = select.value;
+  });
+
   document.addEventListener("change", (event) => {
     const input = event.target;
     const form = input.closest("form[data-transaction-form]");

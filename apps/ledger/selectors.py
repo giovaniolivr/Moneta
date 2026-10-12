@@ -80,11 +80,15 @@ class AccountBalance:
 
 
 def accounts_with_balances(
-    user: AbstractBaseUser | AnonymousUser, *, on: datetime.date | None = None
+    user: AbstractBaseUser | AnonymousUser,
+    *,
+    on: datetime.date | None = None,
+    include_archived: bool = False,
 ) -> list[AccountBalance]:
-    """Contas ativas com o saldo de cada uma."""
+    """Contas (por padrão só as ativas) com o saldo de cada uma."""
     balances = account_balances(user, on=on)
-    return [AccountBalance(a, balances[a.pk]) for a in list_accounts(user)]
+    accounts = list_accounts(user, include_archived=include_archived)
+    return [AccountBalance(a, balances[a.pk]) for a in accounts]
 
 
 # Atalhos do registro rápido ----------------------------------------------------

@@ -2,53 +2,43 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.http import HttpRequest, HttpResponse, QueryDict
-from django.shortcuts import get_object_or_404, redirect, render
+from django.http import HttpResponse, QueryDict
+from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods, require_POST
 
+from apps.core.drawer import done, render_drawer
+from apps.core.forms import apply_service_errors
 from apps.core.http import AuthenticatedHttpRequest
 from apps.core.money import format_brl
 from apps.taxonomy.models import Category, CategoryKind
 
-from .forms import TransactionFilterForm, TransactionForm
-from .models import PaymentMethod, TransactionKind
+from .forms import AccountForm, TransactionFilterForm, TransactionForm
+from .models import Account, PaymentMethod, TransactionKind
 from .selectors import (
+    accounts_with_balances,
     categories_by_usage,
     filter_transactions,
     frequent_tags,
     last_used_account,
+    list_accounts,
     list_transactions,
     transaction_totals,
 )
-from .services import create_transaction, delete_transaction, update_transaction
+from .services import (
+    create_account,
+    create_transaction,
+    delete_account,
+    delete_transaction,
+    set_account_archived,
+    update_account,
+    update_transaction,
+)
 
-# Requisições do painel lateral (static/js/drawer.js) recebem só o fragmento do formulário.
-FRAGMENT_HEADER = "X-Moneta-Fragment"
-SAVED_EVENT_HEADER = "X-Moneta-Event"
 PAGE_SIZE = 50
-
-
-def _is_fragment(request: HttpRequest) -> bool:
-    return request.headers.get(FRAGMENT_HEADER) == "1"
-
-
-def _saved(request: HttpRequest, message: str, fallback: str) -> HttpResponse:
-    """Resposta após salvar/excluir: 204 para o painel (que recarrega a página) ou redirect."""
-    messages.success(request, message)
-    if _is_fragment(request):
-        response = HttpResponse(status=204)
-        response[SAVED_EVENT_HEADER] = "transaction-saved"
-        return response
-    next_url = request.POST.get("next") or request.GET.get("next") or ""
-    if url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
-        return redirect(next_url)
-    return redirect(fallback)
 
 
 # Formulário (criar / editar) ----------------------------------------------------
@@ -89,10 +79,9 @@ def _render_form(
         "saved_message": saved_message,
         "next": request.POST.get("next") or request.GET.get("next") or "",
     }
-    template = (
-        "ledger/_transaction_form.html" if _is_fragment(request) else "ledger/transaction_form.html"
+    return render_drawer(
+        request, "ledger/_transaction_form.html", context, title=context["form_title"]
     )
-    return render(request, template, context)
 
 
 @require_http_methods(["GET", "POST"])
@@ -117,7 +106,7 @@ def transaction_create(request: AuthenticatedHttpRequest) -> HttpResponse:
                     initial={"kind": tx.kind, "account": tx.account, "date": tx.date},
                 )
                 return _render_form(request, fresh, saved_message=message)
-            return _saved(request, message, fallback="home")
+            return done(request, message, fallback="home")
     return _render_form(request, form)
 
 
@@ -134,7 +123,7 @@ def transaction_update(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> Http
         except ValidationError as error:
             form.add_service_errors(error)
         else:
-            return _saved(request, "Movimentação atualizada.", fallback="ledger:transaction_list")
+            return done(request, "Movimentação atualizada.", fallback="ledger:transaction_list")
     return _render_form(request, form)
 
 
@@ -143,7 +132,7 @@ def transaction_delete(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> Http
     tx = get_object_or_404(list_transactions(request.user), pk=pk)
     label = f"{tx.get_kind_display()} de {format_brl(tx.amount_cents)}"
     delete_transaction(tx)
-    return _saved(request, f"{label} excluída.", fallback="ledger:transaction_list")
+    return done(request, f"{label} excluída.", fallback="ledger:transaction_list")
 
 
 # Lista -------------------------------------------------------------------------
@@ -207,3 +196,109 @@ def transaction_list(request: AuthenticatedHttpRequest) -> HttpResponse:
             ),
         },
     )
+
+
+# Contas ------------------------------------------------------------------------
+
+ACCOUNTS = "ledger:account_list"
+
+
+def account_list(request: AuthenticatedHttpRequest) -> HttpResponse:
+    rows = accounts_with_balances(request.user, include_archived=True)
+    active = [r for r in rows if not r.account.is_archived]
+    return render(
+        request,
+        "ledger/account_list.html",
+        {
+            "accounts": active,
+            "archived": [r for r in rows if r.account.is_archived],
+            "assets_cents": sum(r.balance_cents for r in active if not r.account.is_liability),
+            "liabilities_cents": sum(r.balance_cents for r in active if r.account.is_liability),
+            "total_cents": sum(r.balance_cents for r in active),
+        },
+    )
+
+
+def _account_drawer(
+    request: AuthenticatedHttpRequest,
+    form: AccountForm,
+    *,
+    account: Account | None = None,
+    action_error: str = "",
+) -> HttpResponse:
+    return render_drawer(
+        request,
+        "ledger/_account_form.html",
+        {"form": form, "account": account, "action_error": action_error},
+        title="Editar conta" if account else "Nova conta",
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def account_create(request: AuthenticatedHttpRequest) -> HttpResponse:
+    form = AccountForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        data = form.cleaned_data
+        try:
+            account = create_account(
+                request.user,
+                name=data["name"],
+                kind=data["kind"],
+                opening_balance_cents=form.opening_balance_cents(),
+                opening_date=data["opening_date"],
+            )
+        except ValidationError as error:
+            apply_service_errors(form, error, {"opening_balance_cents": "opening_balance"})
+        else:
+            return done(request, f"Conta “{account}” criada.", fallback=ACCOUNTS)
+    return _account_drawer(request, form)
+
+
+@require_http_methods(["GET", "POST"])
+def account_update(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpResponse:
+    account = get_object_or_404(list_accounts(request.user, include_archived=True), pk=pk)
+    form = AccountForm(request.POST or None, instance=account)
+    if request.method == "POST" and form.is_valid():
+        data = form.cleaned_data
+        try:
+            update_account(
+                account,
+                name=data["name"],
+                opening_balance_cents=form.opening_balance_cents(),
+                opening_date=data["opening_date"],
+            )
+        except ValidationError as error:
+            apply_service_errors(form, error, {"opening_balance_cents": "opening_balance"})
+        else:
+            return done(request, f"Conta “{account}” atualizada.", fallback=ACCOUNTS)
+    return _account_drawer(request, form, account=account)
+
+
+def _account_action_failed(
+    request: AuthenticatedHttpRequest, account: Account, error: ValidationError
+) -> HttpResponse:
+    return _account_drawer(
+        request, AccountForm(instance=account), account=account, action_error=error.messages[0]
+    )
+
+
+@require_POST
+def account_archive(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpResponse:
+    account = get_object_or_404(list_accounts(request.user, include_archived=True), pk=pk)
+    try:
+        set_account_archived(account, archived=not account.is_archived)
+    except ValidationError as error:
+        return _account_action_failed(request, account, error)
+    verb = "arquivada" if account.is_archived else "restaurada"
+    return done(request, f"Conta “{account}” {verb}.", fallback=ACCOUNTS)
+
+
+@require_POST
+def account_delete(request: AuthenticatedHttpRequest, pk: uuid.UUID) -> HttpResponse:
+    account = get_object_or_404(list_accounts(request.user, include_archived=True), pk=pk)
+    name = str(account)
+    try:
+        delete_account(account)
+    except ValidationError as error:
+        return _account_action_failed(request, account, error)
+    return done(request, f"Conta “{name}” excluída.", fallback=ACCOUNTS)

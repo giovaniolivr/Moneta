@@ -9,6 +9,7 @@ from apps.ledger.selectors import list_accounts
 from apps.ledger.services import (
     DEFAULT_ACCOUNT_NAME,
     create_account,
+    delete_account,
     ensure_default_account,
     set_account_archived,
     update_account,
@@ -31,11 +32,25 @@ class TestDefaultAccount:
         assert ensure_default_account(user) == first
         assert Account.objects.for_user(user).count() == 1
 
-    def test_ensure_does_not_recreate_when_all_archived(self, user: Any) -> None:
+    def test_cannot_archive_or_delete_last_active_account(self, user: Any) -> None:
         account = ensure_default_account(user)
-        set_account_archived(account, archived=True)
-        assert ensure_default_account(user) == account
-        assert Account.objects.for_user(user).count() == 1
+        with pytest.raises(ValidationError, match="ao menos uma conta ativa"):
+            set_account_archived(account, archived=True)
+        with pytest.raises(ValidationError, match="ao menos uma conta ativa"):
+            delete_account(account)
+        assert Account.objects.for_user(user).filter(is_archived=False).count() == 1
+
+    def test_ensure_prefers_active_account(self, user: Any) -> None:
+        main = ensure_default_account(user)
+        create_account(user, name="Caixinha", kind=AccountKind.SAVINGS)
+        set_account_archived(main, archived=True)
+        assert ensure_default_account(user).name == "Caixinha"
+
+    def test_delete_only_without_transactions(self, user: Any) -> None:
+        ensure_default_account(user)
+        spare = create_account(user, name="Sem uso", kind=AccountKind.CASH)
+        delete_account(spare)
+        assert not Account.objects.filter(pk=spare.pk).exists()
 
 
 class TestCreateAccount:
@@ -74,6 +89,7 @@ class TestUpdateAccount:
 
     def test_archive_hides_from_listing(self, user: Any) -> None:
         account = ensure_default_account(user)
+        create_account(user, name="Caixinha", kind=AccountKind.SAVINGS)
         set_account_archived(account, archived=True)
         assert account not in list_accounts(user)
         assert account in list_accounts(user, include_archived=True)

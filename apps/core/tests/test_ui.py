@@ -99,3 +99,14 @@ def test_login_page_renders_styled_form(client: Client) -> None:
     html = client.get(reverse("login")).content.decode()
     assert 'autocomplete="current-password"' in html
     assert "css/app.css" in html
+
+
+def test_category_icons_exist_in_sprite() -> None:
+    from apps.taxonomy.defaults import DEFAULT_CATEGORIES
+    from apps.taxonomy.icons import CATEGORY_ICONS
+
+    sprite = (Path(settings.BASE_DIR) / "static" / "icons" / "sprite.svg").read_text("utf-8")
+    names = {name for name, _ in CATEGORY_ICONS} | {d.icon for d in DEFAULT_CATEGORIES}
+    missing = [n for n in names if f'<symbol id="{n}"' not in sprite]
+    assert not missing, f"ícones fora do sprite: {missing}"
+    assert {d.icon for d in DEFAULT_CATEGORIES} <= {name for name, _ in CATEGORY_ICONS}

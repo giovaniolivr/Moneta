@@ -45,9 +45,13 @@ CSS próprio sem build (ADR 0002) · Apache ECharts · pytest · ruff · mypy.
 - Páginas de app estendem `layouts/app.html`; itens de menu em `apps/core/navigation.py`
   (ativam sozinhos quando a rota existe).
 - Valores monetários sempre com sinal/ícone além da cor (`|tx_amount`, `|brl_signed`).
-- Formulários rápidos: links com `data-drawer` abrem a URL no painel (`static/js/drawer.js`).
-  A view devolve só o fragmento quando há o header `X-Moneta-Fragment: 1`, e `204` +
-  `X-Moneta-Event` ao salvar; sem JS, a mesma URL renderiza a página inteira.
+- Painel lateral: links com `data-drawer` abrem a URL no painel (`static/js/drawer.js`).
+  Views usam `apps/core/drawer.py`: `render_drawer()` (fragmento ou página inteira via
+  `layouts/drawer_page.html`) e `done()` (204 fecha o painel / redirect sem JS). Contrato no
+  docstring do módulo. Erros de service → `apply_service_errors()` (`apps/core/forms.py`).
+- Formulários com `instance=` usam `has_data(args, kwargs)` para decidir se aplicam os valores
+  iniciais (`Form(request.POST or None)` passa `None` posicional).
+- Regras de exclusão: conta/categoria com movimentações só arquiva; sempre ≥ 1 conta ativa.
 - Views tipam `request: AuthenticatedHttpRequest` (`apps/core/http.py`); objetos por id sempre via
   `get_object_or_404(<selector escopado>(request.user), pk=pk)` → 404 para dados de outro usuário.
 - Cuidado com `@layer`: regras em `layout` perdem para `components` independentemente da

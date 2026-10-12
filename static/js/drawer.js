@@ -1,11 +1,12 @@
 // Painel lateral (no celular, painel inferior) para formulários rápidos.
 // Links com [data-drawer] abrem o conteúdo da URL num <dialog>; sem JavaScript, o link
-// leva à página inteira do formulário (mesmo template).
+// leva à página inteira do formulário (mesmo template). Contrato em apps/core/drawer.py.
 (() => {
   const dialog = document.getElementById("drawer");
   if (!dialog) return;
   const body = dialog.querySelector("[data-drawer-body]");
   const FRAGMENT = { "X-Moneta-Fragment": "1" };
+  let changed = false; // algo foi salvo com o painel aberto: recarrega ao fechar
 
   async function load(url, options = {}) {
     let response;
@@ -20,10 +21,11 @@
       return;
     }
     if (response.status === 204) {
+      changed = true;
       dialog.close();
-      window.location.reload();
       return;
     }
+    if (response.headers.has("X-Moneta-Event")) changed = true;
     if (!response.ok) {
       window.location.href = url;
       return;
@@ -48,6 +50,10 @@
     const data = new FormData(form);
     if (event.submitter?.name) data.append(event.submitter.name, event.submitter.value);
     load(form.action, { method: "POST", body: data });
+  });
+
+  dialog.addEventListener("close", () => {
+    if (changed) window.location.reload();
   });
 
   dialog.addEventListener("click", (event) => {

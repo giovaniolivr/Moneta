@@ -38,7 +38,7 @@ pytest · ruff · mypy (strict)
 - [x] 5. Layout base e temas escuro/claro (CSS próprio sem build, contraste WCAG AA testado)
 - [x] 6. Registro rápido de movimentação em painel lateral (celular: painel inferior)
 - [x] 7. Lista com filtros combináveis (período, tipo, categoria, tag, conta, pagamento, busca), edição e exclusão
-- [ ] 7b. Telas de categorias, tags e contas
+- [x] 7b. Telas de categorias (cor e ícone), tags (apelidos, mesclar) e contas (saldo líquido, cartão como dívida)
 - [ ] 8. Motor de indicadores
 - [ ] 9. Dashboard com gráficos e drill-down
 - [ ] 10. Análises automáticas

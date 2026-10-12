@@ -85,7 +85,7 @@ class TestCreate:
             headers=FRAGMENT,
         )
         assert response.status_code == 204
-        assert response["X-Moneta-Event"] == "transaction-saved"
+        assert response["X-Moneta-Event"] == "done"
 
     def test_save_and_new_keeps_kind_and_account(
         self, logged: Client, user: Any, account: Account

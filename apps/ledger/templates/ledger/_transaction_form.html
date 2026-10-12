@@ -2,10 +2,7 @@
 <form class="tx-form" method="post" action="{{ form_action }}" data-transaction-form data-kind="{{ kind }}" novalidate>
   {% csrf_token %}
   {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-  <div class="drawer-header">
-    <h2 id="drawer-title">{{ form_title }}</h2>
-    <button class="btn btn-ghost btn-icon" type="button" data-drawer-close aria-label="Fechar">{% icon "x" %}</button>
-  </div>
+  {% include "components/drawer_header.html" %}
 
   {% if saved_message %}
     <div class="alert alert-success" role="status">{% icon "circle-check" "icon-sm" %}{{ saved_message }}</div>

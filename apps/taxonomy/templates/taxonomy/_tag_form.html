@@ -1,0 +1,70 @@
+{% load ui %}
+<div class="tx-form">
+  {% include "components/drawer_header.html" %}
+
+  {% if notice %}
+    <div class="alert alert-success" role="status">{% icon "circle-check" "icon-sm" %}{{ notice }}</div>
+  {% endif %}
+
+  <form class="stack-sm" method="post" action="{% url 'taxonomy:tag_edit' tag.pk %}" novalidate>
+    {% csrf_token %}
+    <div class="field">
+      <label for="{{ rename_form.name.id_for_label }}">Nome</label>
+      <div class="inline-form">
+        {{ rename_form.name }}
+        <button class="btn btn-secondary" type="submit">Renomear</button>
+      </div>
+      {% for error in rename_form.name.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+      {% for error in rename_form.non_field_errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+    </div>
+  </form>
+
+  <section class="stack-sm" aria-labelledby="aliases-title">
+    <h3 id="aliases-title" class="section-title">Apelidos</h3>
+    <p class="field-help">Ao digitar um apelido numa movimentação, a tag #{{ tag.name }} é usada.</p>
+    {% if aliases %}
+      <div class="chips">
+        {% for alias in aliases %}
+          <form class="inline" method="post" action="{% url 'taxonomy:tag_alias_remove' alias.pk %}">
+            {% csrf_token %}
+            <button class="chip" type="submit" aria-label="Remover apelido {{ alias.normalized_alias }}">{{ alias.normalized_alias }}{% icon "x" "icon-sm" %}</button>
+          </form>
+        {% endfor %}
+      </div>
+    {% endif %}
+    <form method="post" action="{% url 'taxonomy:tag_alias_add' tag.pk %}" novalidate>
+      {% csrf_token %}
+      <div class="field">
+        <label class="sr-only" for="{{ alias_form.alias.id_for_label }}">{{ alias_form.alias.label }}</label>
+        <div class="inline-form">
+          {{ alias_form.alias }}
+          <button class="btn btn-secondary" type="submit">{% icon "plus" "icon-sm" %}Adicionar</button>
+        </div>
+        {% for error in alias_form.alias.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        {% for error in alias_form.non_field_errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+      </div>
+    </form>
+  </section>
+
+  <section class="stack-sm" aria-labelledby="merge-title">
+    <h3 id="merge-title" class="section-title">Mesclar</h3>
+    <p class="field-help">As movimentações de #{{ tag.name }} passam para a tag escolhida, e “{{ tag.normalized_name }}” vira apelido dela.</p>
+    <form method="post" action="{% url 'taxonomy:tag_merge' tag.pk %}" novalidate>
+      {% csrf_token %}
+      <div class="inline-form">
+        {{ merge_form.target }}
+        <button class="btn btn-secondary" type="submit">{% icon "merge" "icon-sm" %}Mesclar</button>
+      </div>
+      {% for error in merge_form.target.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+    </form>
+  </section>
+
+  <details class="danger-zone">
+    <summary>{% icon "trash-2" "icon-sm" %}Excluir tag</summary>
+    <form method="post" action="{% url 'taxonomy:tag_delete' tag.pk %}">
+      {% csrf_token %}
+      <p class="text-sm">A tag sai das movimentações e os apelidos são removidos. As movimentações em si não são apagadas.</p>
+      <button class="btn btn-danger" type="submit">Confirmar exclusão</button>
+    </form>
+  </details>
+</div>

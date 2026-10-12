@@ -3,6 +3,7 @@ from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import RestrictedError
 
 from apps.core.names import InvalidNameError, clean_display_name, normalize_name
 from apps.users.models import User
@@ -185,3 +186,13 @@ def merge_tags(source: Tag, target: Tag) -> Tag:
 def delete_tag(tag: Tag) -> None:
     """Remove a tag, suas associações e apelidos. As movimentações em si não são afetadas."""
     tag.delete()
+
+
+def delete_category(category: Category) -> None:
+    """Só categorias sem movimentações podem ser excluídas; as demais são arquivadas."""
+    try:
+        category.delete()
+    except RestrictedError as exc:
+        raise ValidationError(
+            "Esta categoria tem movimentações. Arquive-a para escondê-la sem perder o histórico."
+        ) from exc

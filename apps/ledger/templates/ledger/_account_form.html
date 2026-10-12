@@ -1,0 +1,62 @@
+{% load ui %}
+<form class="tx-form" method="post" action="{% if account %}{% url 'ledger:account_update' account.pk %}{% else %}{% url 'ledger:account_create' %}{% endif %}" data-account-form data-kind="{% if account %}{{ account.kind }}{% else %}{{ form.kind.value|default:'checking' }}{% endif %}" novalidate>
+  {% csrf_token %}
+  {% include "components/drawer_header.html" %}
+
+  {% if action_error %}
+    <div class="alert alert-error" role="alert">{% icon "circle-alert" "icon-sm" %}{{ action_error }}</div>
+  {% endif %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-error" role="alert">{% icon "circle-alert" "icon-sm" %}{{ form.non_field_errors|join:" " }}</div>
+  {% endif %}
+
+  <div class="field">
+    <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+    {{ form.name }}
+    {% for error in form.name.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
+
+  <div class="field">
+    <label for="{{ form.kind.id_for_label }}">{{ form.kind.label }}</label>
+    {{ form.kind }}
+    {% if account %}<p class="field-help">O tipo não muda depois de criada.</p>{% endif %}
+    {% for error in form.kind.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
+
+  <div class="form-row">
+    <div class="field">
+      <label for="{{ form.opening_balance.id_for_label }}"><span data-only-kind="other">Saldo inicial</span><span data-only-kind="credit_card">Fatura em aberto</span></label>
+      {{ form.opening_balance }}
+      {% for error in form.opening_balance.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+    </div>
+    <div class="field">
+      <label for="{{ form.opening_date.id_for_label }}">{{ form.opening_date.label }}</label>
+      {{ form.opening_date }}
+      {% for error in form.opening_date.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+    </div>
+  </div>
+  <p class="field-help">{{ form.opening_date.help_text }}</p>
+
+  <div class="form-actions form-actions-single">
+    <button class="btn btn-primary" type="submit">{% if account %}Salvar alterações{% else %}Criar conta{% endif %}</button>
+  </div>
+</form>
+
+{% if account %}
+  <div class="drawer-secondary-actions">
+    <form method="post" action="{% url 'ledger:account_archive' account.pk %}">
+      {% csrf_token %}
+      <button class="btn btn-secondary" type="submit">
+        {% if account.is_archived %}{% icon "archive-restore" "icon-sm" %}Restaurar{% else %}{% icon "archive" "icon-sm" %}Arquivar{% endif %}
+      </button>
+    </form>
+  </div>
+  <details class="danger-zone">
+    <summary>{% icon "trash-2" "icon-sm" %}Excluir conta</summary>
+    <form method="post" action="{% url 'ledger:account_delete' account.pk %}">
+      {% csrf_token %}
+      <p class="text-sm">Só é possível excluir contas sem movimentações. As demais podem ser arquivadas: somem dos formulários, mas o histórico e o saldo continuam.</p>
+      <button class="btn btn-danger" type="submit">Confirmar exclusão</button>
+    </form>
+  </details>
+{% endif %}

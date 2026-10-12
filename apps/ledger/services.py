@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import RestrictedError
 
 from apps.taxonomy.models import Category
 from apps.taxonomy.services import get_or_create_tags
@@ -54,6 +55,8 @@ def update_account(
 
 def set_account_archived(account: Account, *, archived: bool) -> Account:
     """Arquivar esconde a conta dos formulários, mas preserva o histórico e o saldo."""
+    if archived:
+        _ensure_another_active_account(account)
     account.is_archived = archived
     account.save(update_fields=["is_archived", "updated_at"])
     return account
@@ -136,3 +139,24 @@ def update_transaction(tx: Transaction, data: TransactionData) -> Transaction:
 
 def delete_transaction(tx: Transaction) -> None:
     tx.delete()
+
+
+def delete_account(account: Account) -> None:
+    """Só contas sem movimentações podem ser excluídas; as demais são arquivadas."""
+    _ensure_another_active_account(account)
+    try:
+        account.delete()
+    except RestrictedError as exc:
+        raise ValidationError(
+            "Esta conta tem movimentações. Arquive-a para escondê-la sem perder o histórico."
+        ) from exc
+
+
+def _ensure_another_active_account(account: Account) -> None:
+    if account.is_archived:
+        return
+    others = Account.objects.filter(owner_id=account.owner_id, is_archived=False).exclude(
+        pk=account.pk
+    )
+    if not others.exists():
+        raise ValidationError("Mantenha ao menos uma conta ativa para registrar movimentações.")

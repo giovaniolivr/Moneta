@@ -1,5 +1,5 @@
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
-from django.db.models import Case, IntegerField, Q, QuerySet, Value, When
+from django.db.models import Case, Count, IntegerField, Q, QuerySet, Value, When
 
 from apps.core.names import InvalidNameError, normalize_name
 
@@ -58,3 +58,12 @@ def search_tags(
         .distinct()
     )
     return list(qs[:limit])
+
+
+def categories_with_usage(user: AbstractBaseUser | AnonymousUser) -> QuerySet[Category]:
+    """Todas as categorias (inclusive arquivadas) com o total de movimentações de cada uma."""
+    return list_categories(user, include_archived=True).annotate(uses=Count("transactions"))
+
+
+def tags_with_usage(user: AbstractBaseUser | AnonymousUser) -> QuerySet[Tag]:
+    return list_tags(user).annotate(uses=Count("transactions")).order_by("-uses", "normalized_name")

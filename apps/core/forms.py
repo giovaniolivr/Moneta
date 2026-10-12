@@ -41,3 +41,25 @@ class MoneyField(forms.Field):
         if cents == 0 and not self.allow_zero:
             raise ValidationError("O valor deve ser maior que zero.", code="min_value")
         return cents
+
+
+def has_data(args: tuple[Any, ...], kwargs: dict[str, Any]) -> bool:
+    """O formulário foi construído com dados enviados? (`Form(request.POST or None)` passa None.)"""
+    data = args[0] if args else kwargs.get("data")
+    return data is not None
+
+
+def apply_service_errors(
+    form: forms.Form, error: ValidationError, field_map: dict[str, str | None] | None = None
+) -> None:
+    """Exibe no formulário os erros de regra de negócio vindos de services/models.
+
+    Erros de campos que o formulário não tem (ou `__all__`) viram erros gerais.
+    """
+    if not hasattr(error, "error_dict"):
+        form.add_error(None, error)
+        return
+    mapping = field_map or {}
+    for field, field_messages in error.message_dict.items():
+        target = mapping.get(field, field)
+        form.add_error(target if target in form.fields else None, field_messages)

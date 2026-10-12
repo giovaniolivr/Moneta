@@ -1,0 +1,66 @@
+{% extends "layouts/app.html" %}
+{% load ui money ledger_ui %}
+
+{% block title %}Contas{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Contas</h1>
+    <p>Onde o dinheiro está. Cartão de crédito aparece como dívida (saldo negativo).</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'ledger:account_create' %}" data-drawer>{% icon "plus" "icon-sm" %}Nova conta</a>
+</div>
+
+<div class="grid totals">
+  <div class="card">
+    <div class="stat-label">Em contas</div>
+    <div class="stat-value amount">{{ assets_cents|brl }}</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Cartões (devido)</div>
+    <div class="stat-value amount {% if liabilities_cents < 0 %}amount-expense{% endif %}">{{ liabilities_cents|brl }}</div>
+  </div>
+  <div class="card stat-highlight">
+    <div class="stat-label">Saldo líquido</div>
+    <div class="stat-value amount">{{ total_cents|brl }}</div>
+  </div>
+</div>
+
+<section class="card" aria-label="Contas ativas">
+  <ul class="list">
+    {% for row in accounts %}
+      <li>
+        <a class="list-item list-item-link" href="{% url 'ledger:account_update' row.account.pk %}" data-drawer>
+          <span class="avatar-icon">{% icon row.account|account_icon %}</span>
+          <span class="list-item-main">
+            <span class="list-item-title">{{ row.account.name }}</span>
+            <span class="list-item-meta">{{ row.account.get_kind_display }} · desde {{ row.account.opening_date|date:"d/m/Y" }}</span>
+          </span>
+          <span class="amount {% if row.balance_cents < 0 %}amount-expense{% else %}amount-neutral{% endif %}">{{ row.balance_cents|brl }}</span>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+
+{% if archived %}
+  <details class="card more mt-4">
+    <summary>{% icon "archive" "icon-sm" %} {{ archived|length }} conta{{ archived|length|pluralize }} arquivada{{ archived|length|pluralize }}</summary>
+    <ul class="list">
+      {% for row in archived %}
+        <li>
+          <a class="list-item list-item-link" href="{% url 'ledger:account_update' row.account.pk %}" data-drawer>
+            <span class="avatar-icon">{% icon row.account|account_icon %}</span>
+            <span class="list-item-main">
+              <span class="list-item-title">{{ row.account.name }}</span>
+              <span class="list-item-meta">{{ row.account.get_kind_display }}</span>
+            </span>
+            <span class="amount amount-neutral">{{ row.balance_cents|brl }}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </details>
+{% endif %}
+{% endblock %}
