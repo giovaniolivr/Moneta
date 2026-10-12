@@ -6,21 +6,28 @@ from typing import Any
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.db.models import QuerySet
 
-from apps.analytics.domain.metrics import format_pct
+from apps.analytics import selectors as analytics
+from apps.analytics.domain.metrics import format_pct, percent
+from apps.analytics.domain.periods import add_months, first_full_month, month_start
 from apps.core.money import format_brl
+from apps.ledger.models import Account, AccountKind
+from apps.ledger.selectors import account_balances
 
 from .domain.products import Indexer, MissingRateError, ProductSpec, Taxation
 from .domain.purchase import (
     Comparison,
     Payment,
+    SavingPlan,
     Strategy,
     compare,
     installments,
+    monthly_to_reach,
+    months_to_save,
     split_installments,
 )
 from .domain.rates import Prefixed, Yield
 from .domain.simulation import Simulation, simulate
-from .domain.taxes import EXEMPT
+from .domain.taxes import EXEMPT, TaxRule
 from .models import InvestmentProduct, MarketRate, RateOverride, Series
 
 UserLike = AbstractBaseUser | AnonymousUser
@@ -206,22 +213,21 @@ class PurchaseAnalysis:
     explanation: str
 
 
+def _money_source(user: UserLike, data: dict[str, Any]) -> tuple[Yield, TaxRule, str]:
+    """Rendimento e tributação de onde o dinheiro está (MissingRateError se faltar taxa)."""
+    rates = effective_rates(user)
+    cdi, selic = rates[Series.CDI].annual, rates[Series.SELIC].annual
+    option = {o.key: o for o in simulation_options(user)}.get(data["produto"])
+    if option is None:
+        return Prefixed(Decimal(0)), EXEMPT, "parado (sem rendimento)"
+    return option.spec.yield_for(cdi=cdi, selic=selic), option.spec.taxation.rule, option.label
+
+
 def analyze_purchase(
     user: UserLike, data: dict[str, Any], *, start: datetime.date
 ) -> PurchaseAnalysis:
     """Compara as ofertas com o dinheiro aplicado onde ele está hoje."""
-    rates = effective_rates(user)
-    cdi, selic = rates[Series.CDI].annual, rates[Series.SELIC].annual
-    options = {o.key: o for o in simulation_options(user)}
-    option = options.get(data["produto"])
-    if option is None:
-        yield_: Yield = Prefixed(Decimal(0))
-        taxes = EXEMPT
-        label = "parado (sem rendimento)"
-    else:
-        yield_ = option.spec.yield_for(cdi=cdi, selic=selic)  # MissingRateError sobe
-        taxes = option.spec.taxation.rule
-        label = option.label
+    yield_, taxes, label = _money_source(user, data)
     strategies = offered_strategies(data, start)
     cash_price = strategies[0].payments[0].cents
     comparison = compare(
@@ -258,3 +264,116 @@ def explain(comparison: Comparison, money_where: str) -> str:
         monthly = format_pct((r.implied_rate * Decimal(100)).quantize(Decimal("0.01")))
         text += f" {r.strategy.label} embute juros de {monthly} ao mês sobre o preço à vista."
     return text
+
+
+# Cabe no bolso? Juntar antes de comprar -------------------------------------------
+
+CAPACITY_MONTHS = 3
+
+
+@dataclass(frozen=True)
+class Pocket:
+    """Capacidade de poupança (resultado médio dos meses fechados completos) e saldo em
+    contas hoje (sem cartões)."""
+
+    capacity_cents: int | None
+    capacity_months: int
+    balance_cents: int
+
+
+def pocket(user: UserLike, today: datetime.date) -> Pocket:
+    current = month_start(today)
+    first = analytics.first_activity_date(user)
+    results: list[int] = []
+    if first is not None:
+        since = max(first_full_month(first), add_months(current, -CAPACITY_MONTHS))
+        if since < current:
+            series = analytics.monthly_series(user, since, current - datetime.timedelta(1))
+            results = [p.net_cents for p in series]
+    balances = account_balances(user, on=today)
+    in_accounts = sum(
+        balances.get(a.pk, 0)
+        for a in Account.objects.for_user(user).exclude(kind=AccountKind.CREDIT_CARD)
+    )
+    capacity = round(sum(results) / len(results)) if results else None
+    return Pocket(capacity, len(results), in_accounts)
+
+
+@dataclass(frozen=True)
+class Fit:
+    strategy: Strategy
+    verdict: str  # "cabe", "aperta", "sem base"
+    detail: str
+
+
+def fits(comparison: Comparison, money: Pocket) -> list[Fit]:
+    """Cada forma de pagar contra a capacidade mensal e o saldo em contas (com números)."""
+    result = []
+    for r in comparison.results:
+        s = r.strategy
+        if s.months_committed == 1:
+            share = percent(s.total_cents, money.balance_cents) if money.balance_cents > 0 else None
+            if money.balance_cents >= s.total_cents:
+                verdict, detail = "cabe", f"usa {format_pct(share)} do saldo em contas hoje"
+            else:
+                verdict = "aperta"
+                detail = f"o saldo em contas hoje é {format_brl(money.balance_cents)}"
+        elif money.capacity_cents is None:
+            verdict, detail = "sem base", "ainda sem meses fechados para medir sua capacidade"
+        elif s.max_month_cents <= money.capacity_cents:
+            verdict = "cabe"
+            detail = (
+                f"{format_brl(s.max_month_cents)}/mês de {format_brl(money.capacity_cents)} que "
+                "você costuma guardar"
+            )
+        else:
+            verdict = "aperta"
+            detail = (
+                f"{format_brl(s.max_month_cents)}/mês, acima dos "
+                f"{format_brl(max(money.capacity_cents, 0))} que você costuma guardar"
+            )
+        result.append(Fit(s, verdict, detail))
+    return result
+
+
+@dataclass(frozen=True)
+class SavingAnalysis:
+    plan: SavingPlan | None  # juntando `monthly` por mês
+    monthly_cents: int | None
+    needed_monthly_cents: int | None  # para comprar até `deadline`
+    deadline: datetime.date | None
+    target_cents: int  # preço à vista (com desconto)
+    vs_installments: list[tuple[Strategy, int]]  # (estratégia, quanto juntar economiza)
+
+
+def saving_analysis(
+    user: UserLike, data: dict[str, Any], comparison: Comparison, *, start: datetime.date
+) -> SavingAnalysis | None:
+    monthly: int | None = data.get("guardar")
+    deadline: datetime.date | None = data.get("ate")
+    if not monthly and not deadline:
+        return None
+    yield_, taxes, _ = _money_source(user, data)
+    cash = next(r.strategy for r in comparison.results if r.strategy.key == "avista")
+    target = cash.total_cents
+    plan = (
+        months_to_save(
+            yield_=yield_, taxes=taxes, start=start, monthly_cents=monthly, target_cents=target
+        )
+        if monthly
+        else None
+    )
+    needed = (
+        monthly_to_reach(
+            yield_=yield_, taxes=taxes, start=start, target_cents=target, deadline=deadline
+        )
+        if deadline
+        else None
+    )
+    deposited = plan.deposited_cents if plan else None
+    vs = [
+        (r.strategy, r.strategy.total_cents - deposited)
+        for r in comparison.results
+        if deposited is not None and r.strategy.key != "avista"
+    ]
+    return SavingAnalysis(plan, monthly, needed, deadline, target, vs)

@@ -4,6 +4,7 @@ from typing import Any
 from django import template
 
 from apps.analytics.domain.metrics import format_pct
+from apps.core.money import format_brl
 
 register = template.Library()
 
@@ -37,3 +38,8 @@ def percent_from_fraction_2(value: Decimal | None) -> str:
     if value is None:
         return "—"
     return format_pct((value * 100).quantize(Decimal("0.01")))
+
+
+@register.filter
+def budget_abs_brl(cents: int) -> str:
+    return format_brl(abs(cents))

@@ -2,6 +2,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from django import forms
+from django.utils import timezone
 
 from apps.core.forms import MoneyField, has_data
 
@@ -139,6 +140,12 @@ class PurchaseForm(forms.Form):
     en_entrada = MoneyField(label="Entrada", required=False)
     en_parcelas = forms.IntegerField(label="Parcelas", required=False, min_value=1, max_value=72)
     en_valor = MoneyField(label="Valor da parcela", required=False)
+    guardar = MoneyField(label="Consigo guardar por mês", required=False)
+    ate = forms.DateField(
+        label="Quero comprar até",
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
 
     def __init__(self, *args: Any, choices: list[tuple[str, str]], **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -167,4 +174,6 @@ class PurchaseForm(forms.Form):
                 self.add_error(value, f"{label}: informe o número de parcelas e o valor.")
         if data.get("en_entrada") and not data.get("en_parcelas"):
             self.add_error("en_parcelas", "Entrada + parcelas: informe as parcelas.")
+        if (deadline := data.get("ate")) and deadline <= timezone.localdate():
+            self.add_error("ate", "Escolha uma data futura.")
         return data

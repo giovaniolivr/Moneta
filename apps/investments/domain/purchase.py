@@ -153,3 +153,66 @@ def compare(
         for strategy, final, cost, rate in partial
     ]
     return Comparison(base_day, capital, results)
+
+
+# Ainda sem o dinheiro: juntar antes de comprar ------------------------------------
+
+MAX_SAVING_MONTHS = 240
+
+
+@dataclass(frozen=True)
+class SavingPlan:
+    months: int  # aportes feitos até conseguir comprar
+    purchase_day: datetime.date
+    deposited_cents: int
+    net_at_purchase_cents: int  # líquido disponível no dia da compra (≥ alvo)
+
+
+def months_to_save(
+    *,
+    yield_: Yield,
+    taxes: TaxRule,
+    start: datetime.date,
+    monthly_cents: int,
+    target_cents: int,
+) -> SavingPlan | None:
+    """Guardando `monthly_cents` por mês (1º aporte hoje), quando o líquido chega ao alvo?
+    None se não chega em 20 anos."""
+    if monthly_cents <= 0:
+        return None
+    portfolio = Portfolio(yield_, taxes)
+    for month in range(MAX_SAVING_MONTHS):
+        day = add_months(start, month)
+        net = portfolio.value(day).net_cents
+        if net >= target_cents:
+            return SavingPlan(month, day, monthly_cents * month, net)
+        portfolio.deposit(day, monthly_cents)
+    return None
+
+
+def monthly_to_reach(
+    *,
+    yield_: Yield,
+    taxes: TaxRule,
+    start: datetime.date,
+    target_cents: int,
+    deadline: datetime.date,
+) -> int:
+    """Menor aporte mensal (1º hoje, último no mês anterior ao prazo) cujo líquido no prazo
+    alcança o alvo — com IR/IOF reais por aporte (busca binária sobre a simulação)."""
+    months = max(1, (deadline.year - start.year) * 12 + deadline.month - start.month)
+
+    def net_at_deadline(monthly: int) -> int:
+        portfolio = Portfolio(yield_, taxes)
+        for month in range(months):
+            portfolio.deposit(add_months(start, month), monthly)
+        return portfolio.value(deadline).net_cents
+
+    low, high = 0, target_cents
+    while low < high:
+        mid = (low + high) // 2
+        if net_at_deadline(mid) >= target_cents:
+            high = mid
+        else:
+            low = mid + 1
+    return low

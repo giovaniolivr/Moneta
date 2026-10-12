@@ -29,7 +29,17 @@ def _drawer(request: AuthenticatedHttpRequest, form: GoalForm, goal: Goal | None
 
 @require_http_methods(["GET", "POST"])
 def goal_create(request: AuthenticatedHttpRequest) -> HttpResponse:
-    form = GoalForm(request.POST or None, user=request.user)
+    # Pré-preenchimento vindo de outras telas (ex.: estratégias de compra): ?nome=&alvo=&prazo=
+    initial = {
+        "name": request.GET.get("nome", "")[:80],
+        "target": request.GET.get("alvo", "").replace(".", ","),
+        "deadline": request.GET.get("prazo", ""),
+    }
+    form = GoalForm(
+        request.POST or None,
+        user=request.user,
+        initial={k: v for k, v in initial.items() if v},
+    )
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
         try:

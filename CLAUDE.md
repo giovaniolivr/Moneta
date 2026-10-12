@@ -138,6 +138,9 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
 - Estratégias de compra: `investments/domain/purchase.compare()` (mesmo capital aplicado, resgate
   em cada pagamento, data-base comum, custo trazido a hoje pelo próprio rendimento) +
   `selectors.analyze_purchase()`/`explain()`. "Sem juros" com desconto à vista mostra juros embutidos.
+- Sem o dinheiro: `purchase.months_to_save()` e `monthly_to_reach()` (busca binária sobre a
+  simulação, IR/IOF reais); `selectors.pocket()`/`fits()` confrontam cada opção com a capacidade
+  de poupança e o saldo. `goals:goal_create` aceita `?nome=&alvo=&prazo=` para pré-preencher.
 - Exclusão de movimentação é desfazível: `transaction_snapshot()` vai para a sessão e a mensagem
   ganha o botão "Desfazer" (`done(..., extra_tags="undo")` → `ledger:transaction_restore`).
 - Dashboard: `?mes=AAAA-MM` escolhe um mês (navegação ◂ ▸, nunca futuro); usuário sem nenhuma

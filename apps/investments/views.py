@@ -1,10 +1,12 @@
 import uuid
 from typing import Any
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -19,9 +21,12 @@ from .models import InvestmentProduct
 from .selectors import (
     analyze_purchase,
     effective_rates,
+    fits,
     list_products,
+    pocket,
     product_rows,
     run_simulations,
+    saving_analysis,
     simulation_options,
 )
 from .services import create_product, delete_product, set_rate_override, update_product
@@ -191,15 +196,35 @@ def purchase(request: AuthenticatedHttpRequest) -> HttpResponse:
         choices=[(o.key, o.label) for o in options],
         initial={"produto": options[0].key if options else NO_YIELD_KEY},
     )
-    analysis = None
+    analysis = saving = None
+    fit_rows: list[Any] = []
     missing = ""
     if form.is_bound and form.is_valid():
         try:
             analysis = analyze_purchase(request.user, form.cleaned_data, start=today)
+            saving = saving_analysis(
+                request.user, form.cleaned_data, analysis.comparison, start=today
+            )
         except MissingRateError as exc:
             missing = str(exc)
+        else:
+            fit_rows = fits(analysis.comparison, pocket(request.user, today))
+    goal_link = ""
+    if saving is not None:
+        params = {"nome": "Compra planejada", "alvo": f"{saving.target_cents / 100:.2f}"}
+        deadline = saving.deadline or (saving.plan.purchase_day if saving.plan else None)
+        if deadline:
+            params["prazo"] = deadline.isoformat()
+        goal_link = f"{reverse('goals:goal_create')}?{urlencode(params)}"
     return render(
         request,
         "investments/purchase.html",
-        {"form": form, "analysis": analysis, "missing": missing},
+        {
+            "form": form,
+            "analysis": analysis,
+            "saving": saving,
+            "fits": fit_rows,
+            "missing": missing,
+            "goal_link": goal_link,
+        },
     )

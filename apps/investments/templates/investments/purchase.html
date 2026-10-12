@@ -43,6 +43,14 @@
         {% endwith %}{% endfor %}
       </div>
     </fieldset>
+    <fieldset class="field">
+      <legend>Ainda não tem o dinheiro? (opcional)</legend>
+      <div class="form-row">
+        {% for name in "guardar ate"|split_words %}{% with field=form|field_named:name %}
+          <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for e in field.errors %}<p class="field-error">{{ e }}</p>{% endfor %}</div>
+        {% endwith %}{% endfor %}
+      </div>
+    </fieldset>
     <div><button class="btn btn-primary" type="submit">Comparar</button></div>
   </form>
 
@@ -72,8 +80,39 @@
           </tbody>
         </table>
       </div>
+      {% if fits %}
+        <h3>Cabe no bolso?</h3>
+        <ul class="compact-list">
+          {% for f in fits %}
+            <li><span>{% if f.verdict == "cabe" %}{% icon "circle-check" "icon-sm" %}{% else %}{% icon "circle-alert" "icon-sm" %}{% endif %} {{ f.strategy.label }}</span><span>{{ f.verdict }} — {{ f.detail }}</span></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
       <p class="text-sm muted">Como comparamos: o mesmo dinheiro começa aplicado em {{ analysis.option_label }}; cada pagamento é resgatado na data em que vence (com IR e IOF reais) e todas as opções são comparadas em {{ c.base_day|date:"d/m/Y" }}. O custo real é quanto você fica mais pobre por causa da compra, trazido para o dinheiro de hoje — à vista sem desconto custa exatamente o preço. Supõe as taxas constantes.</p>
     </section>
   {% endwith %}{% endif %}
+
+  {% if saving %}
+    <section class="card stack" aria-labelledby="saving-title">
+      <h2 id="saving-title">Juntar antes de comprar</h2>
+      {% if saving.plan %}
+        <p>Guardando <strong>{{ saving.monthly_cents|brl }}/mês</strong> (rendendo onde o dinheiro está), você compra à vista por {{ saving.target_cents|brl }} em <strong>{{ saving.plan.purchase_day|date:"m/Y" }}</strong> — {{ saving.plan.months }} mes{{ saving.plan.months|pluralize:"es" }} de espera, {{ saving.plan.deposited_cents|brl }} guardados no total.</p>
+        {% if saving.vs_installments %}
+          <ul class="compact-list">
+            {% for strategy, diff in saving.vs_installments %}
+              <li><span>vs. comprar agora em {{ strategy.label|lower }}</span><span>{% if diff > 0 %}economiza {{ diff|brl }}{% elif diff < 0 %}gasta {{ diff|budget_abs_brl }} a mais{% else %}mesmo valor{% endif %}, mas espera {{ saving.plan.months }} mes{{ saving.plan.months|pluralize:"es" }}</span></li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      {% elif saving.monthly_cents %}
+        <p class="muted">Com {{ saving.monthly_cents|brl }}/mês não dá para juntar {{ saving.target_cents|brl }} em 20 anos.</p>
+      {% endif %}
+      {% if saving.needed_monthly_cents is not None %}
+        <p>Para comprar à vista ({{ saving.target_cents|brl }}) até <strong>{{ saving.deadline|date:"d/m/Y" }}</strong>, guarde <strong>{{ saving.needed_monthly_cents|brl }}/mês</strong> a partir de hoje (já contando rendimento, IR e IOF).</p>
+      {% endif %}
+      {% if goal_link %}<div><a class="btn btn-secondary btn-sm" href="{{ goal_link }}" data-drawer>{% icon "piggy-bank" "icon-sm" %}Criar meta para esta compra</a></div>{% endif %}
+      <p class="text-sm muted">A meta mede o progresso pelo saldo de uma conta — escolha a conta onde vai guardar.</p>
+    </section>
+  {% endif %}
 </div>
 {% endblock %}
