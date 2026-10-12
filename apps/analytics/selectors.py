@@ -101,7 +101,11 @@ def expenses_by_category(
 
 
 def expenses_by_tag(
-    user: UserLike, start: datetime.date | None, end: datetime.date | None, *, limit: int = 8
+    user: UserLike,
+    start: datetime.date | None,
+    end: datetime.date | None,
+    *,
+    limit: int | None = 8,
 ) -> list[Breakdown]:
     """Despesas por tag. Uma movimentação com várias tags conta em cada uma delas."""
     rows = (
@@ -194,3 +198,7 @@ def monthly_category_expenses(
 
 def category_names(user: UserLike) -> dict[uuid.UUID, str]:
     return dict(Category.objects.for_user(user).values_list("pk", "name"))
+
+
+def category_refs(user: UserLike) -> dict[uuid.UUID, Category]:
+    return {c.pk: c for c in Category.objects.for_user(user).only("name", "color", "icon")}

@@ -1,0 +1,11 @@
+{% load ui money dashboard_ui %}<tr>
+  <th scope="row">
+    <a class="bar-label" href="{{ row.link }}">{% if row.icon %}<span class="bar-icon slot-{{ row.color }}">{% icon row.icon "icon-sm" %}</span>{% endif %}<span class="bar-name">{{ row.label }}</span></a>
+  </th>
+  <td class="spark-cell">{% if row.spark|length > 1 %}<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true" focusable="false"><polyline points="{{ row.spark|spark_points }}"></polyline></svg>{% endif %}</td>
+  {% for cell in row.cells %}
+    <td>{% if cell.cents %}<a href="{{ cell.link }}">{{ cell.cents|brl }}</a>{% else %}<span class="muted">—</span>{% endif %}</td>
+  {% endfor %}
+  <td>{% if row.average_cents is None %}<span class="muted">—</span>{% else %}{{ row.average_cents|brl }}{% endif %}</td>
+  <td>{% include "dashboard/_mini_delta.html" with delta=row.delta label="vs média" %}</td>
+</tr>

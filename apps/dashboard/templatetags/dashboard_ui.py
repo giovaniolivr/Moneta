@@ -72,3 +72,18 @@ def evidence_value(item: Evidence) -> str:
 @register.filter
 def transaction_list_url(transaction_filter: TransactionFilter) -> str:
     return f"{reverse('ledger:transaction_list')}?{transaction_filter.to_query()}"
+
+
+@register.filter
+def spark_points(values: list[int]) -> str:
+    """Pontos de uma sparkline no viewBox 0 0 100 24 (1px de folga em cima e embaixo).
+
+    O eixo começa em zero: variações pequenas continuam parecendo pequenas."""
+    if len(values) < 2:
+        return ""
+    low, high = min(0, *values), max(values)
+    span = high - low or 1
+    step = 100 / (len(values) - 1)
+    return " ".join(
+        f"{i * step:.1f},{23 - (v - low) / span * 22:.1f}" for i, v in enumerate(values)
+    )

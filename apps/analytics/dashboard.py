@@ -2,6 +2,7 @@
 
 import datetime
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
@@ -29,6 +30,7 @@ from .domain.periods import (
     first_full_month,
     month_end,
     month_start,
+    months_between,
 )
 
 PERIODS: list[tuple[str, str]] = [
@@ -93,6 +95,7 @@ class Dashboard:
     pace_chart: dict[str, Any] | None
     has_data: bool
     insights: list[Insight] = field(default_factory=list)
+    month_comparison: MonthComparison | None = None
     extras: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -110,8 +113,16 @@ def _list_link(**kwargs: Any) -> str:
     return f"{reverse('ledger:transaction_list')}?{TransactionFilter(**kwargs).to_query()}"
 
 
-def _bar_rows(items: list[selectors.Breakdown], total: int, link: Any) -> list[dict[str, Any]]:
+def _bar_rows(
+    items: list[selectors.Breakdown],
+    total: int,
+    link: Any,
+    previous: list[selectors.Breakdown] | None = None,
+) -> list[dict[str, Any]]:
+    """Linhas das listas de barras; com `previous`, cada linha traz a variação contra o período
+    anterior equivalente (mesmo recorte pro-rata dos indicadores)."""
     top = max((i.cents for i in items), default=0)
+    before = {i.key: i.cents for i in previous} if previous is not None else None
     return [
         {
             "label": i.label,
@@ -122,9 +133,130 @@ def _bar_rows(items: list[selectors.Breakdown], total: int, link: Any) -> list[d
             "color": i.color,
             "icon": i.icon,
             "link": link(i),
+            "delta": Delta(i.cents, before.get(i.key, 0), up_is_good=False)
+            if before is not None
+            else None,
         }
         for i in items
     ]
+
+
+COMPARISON_MONTHS = 6
+
+
+@dataclass(frozen=True)
+class ComparisonCell:
+    cents: int
+    link: str
+
+
+@dataclass(frozen=True)
+class ComparisonRow:
+    label: str
+    cells: list[ComparisonCell]
+    average_cents: int | None  # média da base (meses fechados completos; mesmos dias se parcial)
+    delta: Delta | None  # último mês vs média
+    spark: list[int]  # meses fechados completos (o mês em andamento distorceria a linha)
+    link: str = ""
+    color: str = ""
+    icon: str = ""
+
+
+@dataclass(frozen=True)
+class MonthComparison:
+    """Despesas por categoria nos últimos meses, com a média e a variação do último mês."""
+
+    months: list[str]
+    partial_day: int | None  # último mês em andamento: comparado só até este dia
+    baseline_months: int
+    rows: list[ComparisonRow]
+    total: ComparisonRow
+
+
+def build_month_comparison(
+    user: AbstractBaseUser | AnonymousUser,
+    effective_end: datetime.date,
+    first_activity: datetime.date | None,
+    *,
+    months_count: int = COMPARISON_MONTHS,
+) -> MonthComparison | None:
+    last = month_start(effective_end)
+    first = add_months(last, -(months_count - 1))
+    months = months_between(first, last)
+    partial = effective_end < month_end(last)
+    full = selectors.monthly_category_expenses(user, first, effective_end)
+    if first_activity is None or not full:
+        return None
+    # Base: meses anteriores ao último, fechados e completos (desde o 1º mês inteiro de uso).
+    complete_from = first_full_month(first_activity)
+    baseline = [m for m in months[:-1] if m >= complete_from]
+    base_source = (
+        selectors.monthly_category_expenses(
+            user, first, month_end(add_months(last, -1)), until_day_of_month=effective_end.day
+        )
+        if partial
+        else full
+    )
+    spark_months = baseline if partial else [m for m in months if m >= complete_from]
+    categories = selectors.category_refs(user)
+    month_ends = [min(month_end(m), effective_end) for m in months]
+
+    def link_for(*category_ids: uuid.UUID) -> Callable[[datetime.date, datetime.date], str]:
+        def link(start: datetime.date, end: datetime.date) -> str:
+            return _list_link(
+                date_from=start,
+                date_to=end,
+                kinds=(TransactionKind.EXPENSE,),
+                category_ids=category_ids,
+            )
+
+        return link
+
+    def row(values: list[int], base_values: list[int], *category_ids: uuid.UUID) -> dict[str, Any]:
+        average = round(sum(base_values) / len(base_values)) if base_values else None
+        link = link_for(*category_ids)
+        return {
+            "cells": [
+                ComparisonCell(v, link(m, e))
+                for v, m, e in zip(values, months, month_ends, strict=True)
+            ],
+            "average_cents": average,
+            "delta": Delta(values[-1], average, up_is_good=False) if average is not None else None,
+            "spark": [v for v, m in zip(values, months, strict=True) if m in spark_months],
+            "link": link(first, effective_end),
+        }
+
+    rows = []
+    for cid in {cid for by_category in full.values() for cid in by_category}:
+        category = categories.get(cid)
+        data = row(
+            [full.get(m, {}).get(cid, 0) for m in months],
+            [base_source.get(m, {}).get(cid, 0) for m in baseline],
+            cid,
+        )
+        rows.append(
+            ComparisonRow(
+                label=category.name if category else "Categoria removida",
+                color=category.color if category else "",
+                icon=category.icon if category else "",
+                **data,
+            )
+        )
+    rows.sort(key=lambda r: (-sum(c.cents for c in r.cells), r.label))
+    total = ComparisonRow(
+        label="Total",
+        **row(
+            [sum(full.get(m, {}).values()) for m in months],
+            [sum(base_source.get(m, {}).values()) for m in baseline],
+        ),
+    )
+    return MonthComparison(
+        months=[month_label(m) for m in months],
+        partial_day=effective_end.day if partial else None,
+        baseline_months=len(baseline),
+        rows=rows,
+        total=total,
+    )
 
 
 def _last_closed_month(span_end: datetime.date, today: datetime.date) -> datetime.date:
@@ -297,10 +429,19 @@ def build_dashboard(
             category_ids=(i.id,),
         ),
     )
+    prev_range = comparison.previous if comparison else None
     tags = _bar_rows(
         selectors.expenses_by_tag(user, start, effective_end),
         expense_total,
-        lambda i: _list_link(date_from=start, date_to=effective_end, tag_ids=(i.id,)),
+        lambda i: _list_link(
+            date_from=start,
+            date_to=effective_end,
+            kinds=(TransactionKind.EXPENSE,),
+            tag_ids=(i.id,),
+        ),
+        selectors.expenses_by_tag(user, prev_range.start, prev_range.end, limit=None)
+        if prev_range
+        else None,
     )
     methods = _bar_rows(
         selectors.expenses_by_payment_method(user, start, effective_end),
@@ -311,6 +452,12 @@ def build_dashboard(
             kinds=(TransactionKind.EXPENSE,),
             payment_methods=(i.key,) if i.key else (),
         ),
+        selectors.expenses_by_payment_method(user, prev_range.start, prev_range.end)
+        if prev_range
+        else None,
+    )
+    month_comparison = build_month_comparison(
+        user, effective_end, selectors.first_activity_date(user)
     )
 
     insights = (
@@ -346,4 +493,5 @@ def build_dashboard(
         pace_chart=pace_chart,
         has_data=bool(current.income_cents or current.expense_cents),
         insights=insights,
+        month_comparison=month_comparison,
     )

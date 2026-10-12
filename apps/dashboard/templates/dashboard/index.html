@@ -137,6 +137,9 @@
     <div class="chart" data-chart="diverging" data-source="data-net" data-label="Resultado mensal"></div>
   </section>
 
+  {# ───── Comparativo mês a mês ───── #}
+  {% if dash.month_comparison %}{% include "dashboard/_month_comparison.html" %}{% endif %}
+
   {# ───── Tags, formas de pagamento, contas ───── #}
   <section class="card chart-card" aria-labelledby="chart-tags-title">
     <div class="chart-header"><div><h2 id="chart-tags-title">Tags com mais gastos</h2><p class="chart-subtitle">Uma movimentação com várias tags conta em cada uma</p></div></div>
@@ -145,7 +148,7 @@
 
   <section class="card chart-card" aria-labelledby="chart-methods-title">
     <div class="chart-header"><div><h2 id="chart-methods-title">Formas de pagamento</h2><p class="chart-subtitle">Despesas do período</p></div></div>
-    {% include "dashboard/_bar_list.html" with rows=dash.payment_methods empty="Sem despesas no período." %}
+    {% include "dashboard/_bar_list.html" with rows=dash.payment_methods neutral_delta=True empty="Sem despesas no período." %}
   </section>
 
   <section class="card" aria-labelledby="accounts-title">

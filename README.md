@@ -45,7 +45,7 @@ pytest · ruff · mypy (strict)
 - [x] 8. Motor de indicadores (comparação pro-rata, médias de meses fechados, detalhamentos)
 - [x] 9. Dashboard com gráficos acessíveis, tabela equivalente e drill-down para a lista
 - [x] 10. Análises automáticas (resumo, acima da média, tendência, concentração, dia da semana) com evidência numérica e aviso de dados insuficientes
-- [ ] 11. Seções secundárias da dashboard
+- [x] 11. Seções secundárias da dashboard: comparativo mês a mês por categoria (com tendência e média), variação de tags e formas de pagamento
 - [ ] 12. Exportação, importação e backup
 - [ ] 13. Polimento, acessibilidade e PWA
 

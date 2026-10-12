@@ -2,13 +2,16 @@ import datetime
 import json
 import re
 from decimal import Decimal
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from django.template.loader import render_to_string
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.analytics.domain.insights import Insight
 from apps.dashboard.templatetags.dashboard_ui import pct
 from apps.ledger.services import TransactionData, create_transaction, ensure_default_account
 from apps.taxonomy.models import Category
@@ -133,3 +136,22 @@ def test_no_insights_without_data(client: Client, other_user: Any) -> None:
     client.force_login(other_user)
     html = client.get(reverse("home")).content.decode()
     assert 'id="insights-title"' not in html
+
+
+def test_renders_month_comparison(logged: Client) -> None:
+    html = logged.get(reverse("home")).content.decode()
+    assert 'id="comparison-title"' in html
+    assert "até dia 10" in html  # mês em andamento identificado na coluna
+
+
+def test_insights_show_three_then_more() -> None:
+    findings = [Insight("r", "Regra", "info", f"Mensagem {n}") for n in range(5)]
+    html = render_to_string(
+        "dashboard/_insights.html",
+        {"dash": SimpleNamespace(findings=findings, pending_insights=[])},
+    )
+    more = html.split('class="insight-more"')
+    assert len(more) == 2
+    assert all(f"Mensagem {n}" in more[0] for n in range(3))
+    assert all(f"Mensagem {n}" in more[1] for n in (3, 4))
+    assert "Ver mais 2 análises" in html

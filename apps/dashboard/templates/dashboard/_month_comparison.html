@@ -1,0 +1,34 @@
+{% load ui money dashboard_ui %}{% with cmp=dash.month_comparison %}
+<section class="card chart-card span-full" aria-labelledby="comparison-title">
+  <div class="chart-header">
+    <div>
+      <h2 id="comparison-title">Despesas por categoria, mês a mês</h2>
+      <p class="chart-subtitle">
+        {% if cmp.baseline_months %}Variação de {{ cmp.months|last }} contra a média de {{ cmp.baseline_months }} mes{{ cmp.baseline_months|pluralize:"es" }} fechado{{ cmp.baseline_months|pluralize }}{% if cmp.partial_day %}, nos mesmos dias (1 a {{ cmp.partial_day }}){% endif %}.{% else %}Ainda sem meses fechados completos para calcular a média.{% endif %}
+        Clique num valor para ver as movimentações.
+      </p>
+    </div>
+  </div>
+  <div class="table-scroll">
+    <table class="comparison-table">
+      <thead>
+        <tr>
+          <th scope="col">Categoria</th>
+          <th scope="col"><span class="sr-only">Tendência dos meses fechados</span></th>
+          {% for month in cmp.months %}
+            <th scope="col">{{ month }}{% if forloop.last and cmp.partial_day %}<span class="th-note">até dia {{ cmp.partial_day }}</span>{% endif %}</th>
+          {% endfor %}
+          <th scope="col">Média{% if cmp.partial_day %}<span class="th-note">mesmos dias</span>{% endif %}</th>
+          <th scope="col">Variação</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in cmp.rows %}{% include "dashboard/_comparison_row.html" %}{% endfor %}
+      </tbody>
+      <tfoot>
+        {% include "dashboard/_comparison_row.html" with row=cmp.total %}
+      </tfoot>
+    </table>
+  </div>
+</section>
+{% endwith %}

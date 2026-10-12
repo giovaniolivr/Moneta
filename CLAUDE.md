@@ -62,6 +62,8 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
   `dashboard.build_insights()`. Todo insight tem `evidence` (tabela "Por quê?") e `filter`
   (drill-down); falta de histórico → `insufficient=True` com o que falta. Histórico = só meses
   completos. Nova regra entra em `DEFAULT_RULES` com testes de disparo, não disparo e insuficiente.
+- Tabelas largas: `.table-scroll` (rola dentro do card; é `position: relative` para conter os
+  `.sr-only`). Sparklines são SVG do servidor (`|spark_points`, eixo a partir de zero).
 - Gráficos: dados via `json_script`, desenho em `static/js/charts.js`, cores pelas classes
   `viz-*` (tokens `--color-chart-1..8`, paleta validada pelo skill dataviz). Texto nunca usa a cor
   da série; séries ≥ 2 sempre com legenda.

@@ -373,7 +373,9 @@ suficiente, a regra devolve um insight `insufficient` dizendo quanto falta.
    - Insights (até 3, com "ver mais").
    - Gráficos: receitas × despesas por mês (barras) · despesas por categoria (rosca/barras
      horizontais) · resultado mensal (linha).
-   - Seções abaixo da dobra: comparativo entre meses, tags, formas de pagamento, tendências.
+   - Seções abaixo da dobra: comparativo entre meses (categorias × 6 meses, sparkline dos meses
+     fechados, média e variação do último mês — pro-rata se em andamento), tags e formas de
+     pagamento com variação vs período anterior equivalente.
    - Clique em qualquer elemento → lista filtrada.
 3. **Movimentações** — lista agrupada por dia, filtros combináveis, busca, edição inline/modal,
    exclusão com "desfazer".
@@ -428,7 +430,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 8 ✅ | `analytics` selectors + metrics | KPIs batem com cálculo manual em fixtures |
 | 9 ✅ | Dashboard: KPIs + gráficos + drill-down | clique leva à lista filtrada |
 | 10 ✅ | Insights (regras + "dados insuficientes") | cada regra com teste |
-| 11 | Seções secundárias da dashboard (tags, formas de pgto, comparativos) | |
+| 11 ✅ | Seções secundárias da dashboard (tags, formas de pgto, comparativos) | comparativo por categoria com média pro-rata; variação vs período anterior |
 | 12 | Export/import JSON, CSV, comando de backup | round-trip preserva totais |
 | 13 | Polimento: estados vazios, acessibilidade, PWA (manifest + ícone) | usável diariamente |
 
@@ -462,6 +464,11 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 7. Temas escuro (padrão) e claro, com contraste AA garantido por teste.
 8. Execução local (`runserver`); deploy multiusuário é fase futura.
 9. `DESIGN.md` é inspiração visual, não especificação.
+
+**Tomadas (2026-10-12)**
+10. Análises por **mês civil da data da movimentação** (competência), não pelo ciclo da fatura:
+    uma compra de 28/09 no cartão conta em setembro, mesmo caindo na fatura de outubro; o
+    pagamento da fatura é transferência e não conta.
 
 **Adiadas**
 Deploy/hospedagem · Postgres · API · subcategorias · orçamentos · rate limit · tarefas em fundo ·
