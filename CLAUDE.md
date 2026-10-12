@@ -45,6 +45,11 @@ CSS próprio sem build (ADR 0002) · Apache ECharts · pytest · ruff · mypy.
 - Páginas de app estendem `layouts/app.html`; itens de menu em `apps/core/navigation.py`
   (ativam sozinhos quando a rota existe).
 - Valores monetários sempre com sinal/ícone além da cor (`|tx_amount`, `|brl_signed`).
+- Formulários rápidos: links com `data-drawer` abrem a URL no painel (`static/js/drawer.js`).
+  A view devolve só o fragmento quando há o header `X-Moneta-Fragment: 1`, e `204` +
+  `X-Moneta-Event` ao salvar; sem JS, a mesma URL renderiza a página inteira.
+- Views tipam `request: AuthenticatedHttpRequest` (`apps/core/http.py`).
+- Dev: login automático no `runserver` (só DEBUG + localhost, `apps/core/dev_autologin.py`).
 
 ## Estrutura
 `config/settings/{base,dev,test,prod}.py` · `apps/<app>/` (`models`, `services`, `selectors`,

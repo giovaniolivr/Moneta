@@ -712,6 +712,282 @@
   }
 }
 
+/* ───────────────────────────── Formulário de movimentação ───────────────────────────── */
+@layer components {
+  /* Painel lateral: à direita no desktop, de baixo para cima no celular. */
+  .drawer {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    margin: auto 0 0;
+    padding: 0;
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    background: var(--color-surface);
+    color: var(--color-body);
+  }
+
+  .drawer::backdrop {
+    background: rgb(0 0 0 / 0.6);
+  }
+
+  .drawer-body {
+    padding: var(--space-5) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom));
+  }
+
+  .drawer-loading {
+    padding: var(--space-6);
+    color: var(--color-muted);
+    text-align: center;
+  }
+
+  @media (min-width: 768px) {
+    .drawer {
+      width: 460px;
+      height: 100dvh;
+      max-height: 100dvh;
+      margin: 0 0 0 auto;
+      border-radius: 0;
+      border-width: 0 0 0 1px;
+    }
+
+    .drawer-body {
+      padding: var(--space-5);
+    }
+  }
+
+  .drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .form-page {
+    max-width: 560px;
+  }
+
+  .form-page [data-drawer-close] {
+    display: none;
+  }
+
+  .tx-form {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  legend {
+    margin-bottom: var(--space-2);
+    padding: 0;
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+
+  /* Alternância de seções conforme o tipo escolhido. */
+  .tx-form[data-kind="transfer"] [data-only="entry"],
+  .tx-form:not([data-kind="transfer"]) [data-only="transfer"],
+  .tx-form[data-kind="expense"] [data-for-kind="income"],
+  .tx-form[data-kind="income"] [data-for-kind="expense"] {
+    display: none;
+  }
+
+  /* Seletor de tipo (Receita / Despesa / Transferência). */
+  .segmented {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-1);
+    padding: var(--space-1);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-2);
+  }
+
+  .segmented-option {
+    position: relative;
+  }
+
+  .segmented-option input {
+    position: absolute;
+    opacity: 0;
+  }
+
+  .segmented-option span {
+    display: grid;
+    place-items: center;
+    min-height: 40px;
+    border-radius: var(--radius-sm);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .segmented-option input:checked + span {
+    background: var(--color-surface);
+    color: var(--color-ink);
+    box-shadow: inset 0 0 0 1px var(--color-hairline-strong);
+  }
+
+  .segmented-income input:checked + span {
+    color: var(--color-income);
+  }
+
+  .segmented-expense input:checked + span {
+    color: var(--color-expense);
+  }
+
+  .segmented-option input:focus-visible + span {
+    outline: 2px solid var(--color-focus);
+  }
+
+  /* Valor em destaque. */
+  .amount-wrap {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-hairline-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+  }
+
+  .amount-wrap:focus-within {
+    outline: 2px solid var(--color-focus);
+    border-color: transparent;
+  }
+
+  .amount-prefix {
+    color: var(--color-muted);
+    font-size: var(--text-xl);
+    font-weight: 600;
+  }
+
+  .amount-input {
+    width: 100%;
+    min-height: 60px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--color-ink);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /* Chips (categorias e sugestões de tags). */
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .chips-compact {
+    margin-top: var(--space-1);
+  }
+
+  .chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 36px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-hairline-strong);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface);
+    color: var(--color-body);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .chip .icon {
+    color: var(--slot, currentColor);
+  }
+
+  .chip input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .chip:has(input:checked) {
+    border-color: var(--slot, var(--color-ink));
+    background: var(--color-surface-2);
+    color: var(--color-ink);
+    box-shadow: inset 0 0 0 1px var(--slot, var(--color-ink));
+  }
+
+  .chip:has(input:focus-visible) {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  .chips-compact .chip {
+    min-height: 30px;
+    font-size: var(--text-xs);
+  }
+
+  .chip[aria-pressed="true"] {
+    color: var(--color-muted);
+  }
+
+  .form-row {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  }
+
+  .field-help {
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+  }
+
+  select.input {
+    appearance: auto;
+  }
+
+  textarea.input {
+    min-height: 72px;
+    padding: var(--space-2) var(--space-3);
+    resize: vertical;
+  }
+
+  .more summary {
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .more[open] summary {
+    margin-bottom: var(--space-3);
+  }
+
+  .stack-sm {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .form-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+    padding-top: var(--space-2);
+  }
+
+  .alert-success {
+    color: var(--color-income);
+  }
+}
+
 /* ───────────────────────────── Utilitários ───────────────────────────── */
 @layer utilities {
   .muted {

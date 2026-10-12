@@ -1,5 +1,10 @@
 {% extends "base.html" %}
-{% load ui %}
+{% load static ui %}
+
+{% block head %}
+<script src="{% static 'js/drawer.js' %}" defer></script>
+<script src="{% static 'js/transaction-form.js' %}" defer></script>
+{% endblock %}
 
 {% block body %}
 <a class="sr-only" href="#conteudo">Pular para o conteúdo</a>
@@ -8,7 +13,7 @@
     <a class="brand" href="{% url 'home' %}"><span class="brand-mark">M</span>Moneta</a>
 
     {% if new_transaction_url %}
-      <a class="btn btn-primary btn-block" href="{{ new_transaction_url }}">{% icon "plus" "icon-sm" %}Nova movimentação</a>
+      <a class="btn btn-primary btn-block" href="{{ new_transaction_url }}" data-drawer>{% icon "plus" "icon-sm" %}Nova movimentação</a>
     {% endif %}
 
     <nav class="sidebar-nav">
@@ -27,10 +32,12 @@
         <button class="btn btn-ghost btn-icon theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema claro/escuro">
           {% icon "sun" "icon-sun" %}{% icon "moon" "icon-moon" %}
         </button>
+        {% if not dev_auto_login %}
         <form class="inline" method="post" action="{% url 'logout' %}">
           {% csrf_token %}
           <button class="btn btn-ghost btn-icon" type="submit" aria-label="Sair">{% icon "log-out" %}</button>
         </form>
+        {% endif %}
       </span>
     </div>
   </aside>
@@ -41,10 +48,12 @@
       <button class="btn btn-ghost btn-icon theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema claro/escuro">
         {% icon "sun" "icon-sun" %}{% icon "moon" "icon-moon" %}
       </button>
+      {% if not dev_auto_login %}
       <form class="inline" method="post" action="{% url 'logout' %}">
         {% csrf_token %}
         <button class="btn btn-ghost btn-icon" type="submit" aria-label="Sair">{% icon "log-out" %}</button>
       </form>
+      {% endif %}
     </span>
   </header>
 
@@ -52,7 +61,7 @@
     {% if messages %}
       <div class="stack mb-4">
         {% for message in messages %}
-          <div class="alert{% if message.level_tag == 'error' %} alert-error{% endif %}" role="status">{{ message }}</div>
+          <div class="alert alert-{{ message.level_tag }}" role="status">{% if message.level_tag == "success" %}{% icon "circle-check" "icon-sm" %}{% elif message.level_tag == "error" %}{% icon "circle-alert" "icon-sm" %}{% endif %}{{ message }}</div>
         {% endfor %}
       </div>
     {% endif %}
@@ -68,7 +77,7 @@
         {% if item.url %}<a href="{{ item.url }}"{% if item.active %} aria-current="page"{% endif %}>{% else %}<a aria-disabled="true">{% endif %}{% icon item.icon %}Movimentos</a>
       {% endwith %}
       {% if new_transaction_url %}
-        <a class="bottom-nav-add" href="{{ new_transaction_url }}" aria-label="Nova movimentação">{% icon "plus" %}</a>
+        <a class="bottom-nav-add" href="{{ new_transaction_url }}" data-drawer aria-label="Nova movimentação">{% icon "plus" %}</a>
       {% else %}
         <a class="bottom-nav-add" aria-disabled="true" aria-label="Nova movimentação (em breve)">{% icon "plus" %}</a>
       {% endif %}
@@ -76,4 +85,8 @@
     {% endwith %}
   </nav>
 </div>
+
+<dialog class="drawer" id="drawer" aria-labelledby="drawer-title">
+  <div class="drawer-body" data-drawer-body></div>
+</dialog>
 {% endblock %}

@@ -36,7 +36,7 @@ pytest · ruff · mypy (strict)
 - [x] 3. Tags com normalização, apelidos, mesclagem explícita e busca para autocomplete
 - [x] 4. Movimentações (receitas, despesas, transferências) com regras garantidas no banco e saldo por conta
 - [x] 5. Layout base e temas escuro/claro (CSS próprio sem build, contraste WCAG AA testado)
-- [ ] 6. Registro rápido de movimentação
+- [x] 6. Registro rápido de movimentação em painel lateral (celular: painel inferior)
 - [ ] 7. Lista e filtros de movimentações
 - [ ] 7b. Telas de categorias, tags e contas
 - [ ] 8. Motor de indicadores
@@ -61,7 +61,8 @@ uv run python manage.py createsuperuser
 uv run python manage.py runserver
 ```
 
-Acesse http://127.0.0.1:8000 — não há cadastro público; entre com o usuário criado acima.
+Acesse http://127.0.0.1:8000 — em desenvolvimento o login é automático (somente localhost; desative com
+`DEV_AUTO_LOGIN=0` no `.env`). Não há cadastro público.
 
 ## Qualidade
 

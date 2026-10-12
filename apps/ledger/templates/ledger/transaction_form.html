@@ -1,0 +1,10 @@
+{% extends "layouts/app.html" %}
+{% load static %}
+
+{% block title %}Nova movimentação{% endblock %}
+
+{% block content %}
+<div class="card form-page">
+  {% include "ledger/_transaction_form.html" %}
+</div>
+{% endblock %}

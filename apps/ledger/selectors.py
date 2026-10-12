@@ -3,8 +3,10 @@ import uuid
 from dataclasses import dataclass
 
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
-from django.db.models import BigIntegerField, Case, F, QuerySet, Sum, Value, When
+from django.db.models import BigIntegerField, Case, Count, F, Q, QuerySet, Sum, Value, When
 from django.utils import timezone
+
+from apps.taxonomy.models import Category, Tag
 
 from .models import Account, Transaction, TransactionKind
 
@@ -82,3 +84,44 @@ def accounts_with_balances(
     """Contas ativas com o saldo de cada uma."""
     balances = account_balances(user, on=on)
     return [AccountBalance(a, balances[a.pk]) for a in list_accounts(user)]
+
+
+# Atalhos do registro rápido ----------------------------------------------------
+
+USAGE_WINDOW_DAYS = 90
+
+
+def _usage_since() -> datetime.date:
+    return timezone.localdate() - datetime.timedelta(days=USAGE_WINDOW_DAYS)
+
+
+def categories_by_usage(user: AbstractBaseUser | AnonymousUser, kind: str) -> QuerySet[Category]:
+    """Categorias ativas do tipo, as mais usadas nos últimos 90 dias primeiro."""
+    return (
+        Category.objects.for_user(user)
+        .filter(kind=kind, is_archived=False)
+        .annotate(uses=Count("transactions", filter=Q(transactions__date__gte=_usage_since())))
+        .order_by("-uses", "name")
+    )
+
+
+def frequent_tags(user: AbstractBaseUser | AnonymousUser, *, limit: int = 8) -> list[Tag]:
+    """Tags mais usadas nos últimos 90 dias (sugestões clicáveis no formulário)."""
+    return list(
+        Tag.objects.for_user(user)
+        .annotate(uses=Count("transactions", filter=Q(transactions__date__gte=_usage_since())))
+        .filter(uses__gt=0)
+        .order_by("-uses", "normalized_name")[:limit]
+    )
+
+
+def last_used_account(user: AbstractBaseUser | AnonymousUser) -> Account | None:
+    """Conta da movimentação registrada mais recentemente (padrão do formulário)."""
+    tx = (
+        Transaction.objects.for_user(user)
+        .filter(account__is_archived=False)
+        .select_related("account")
+        .order_by("-created_at")
+        .first()
+    )
+    return tx.account if tx else list_accounts(user).first()

@@ -287,6 +287,10 @@ Feito **agora**, custa pouco; feito depois, custa uma reescrita:
    cookies `Secure/HttpOnly/SameSite`, HSTS, `ALLOWED_HOSTS` restrito; CSRF (HTMX envia o token
    via header configurado no `base.html`).
 6. **Rate limit no login** [ADIAR até expor à internet] (`django-axes`).
+6b. **Login automático em desenvolvimento** (`apps/core/dev_autologin.py`): enquanto o app é de
+   um único usuário local, `runserver` entra direto. Só funciona com `DEBUG=True` + requisição de
+   127.0.0.1/::1 + middleware presente (adicionado apenas em `settings/dev.py`); um system check
+   recusa subir com o middleware e `DEBUG=False`. Desliga com `DEV_AUTO_LOGIN=0`.
 7. **Dados sensíveis**: `.env`, `db.sqlite3` e backups no `.gitignore` desde o primeiro commit.
 
 ---
@@ -399,7 +403,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 3 ✅ | Tags + normalização + aliases + merge | testes de normalização e merge |
 | 4 ✅ | Transaction + services (CRUD, validações, transferências) | regras da §4 testadas; merge de tags move as associações das movimentações |
 | 5 ✅ | Layout base + tokens (temas escuro/claro) + componentes | tela navegável no celular; contraste AA testado |
-| 6 | Formulário rápido de nova movimentação | registro em < 10 s no celular |
+| 6 ✅ | Formulário rápido de nova movimentação (painel lateral / inferior) | registro em < 10 s no celular |
 | 7 | Lista de movimentações + `TransactionFilter` | filtros combináveis, edição, exclusão |
 | 7b | Telas de categorias, tags (apelidos, mesclar) e contas | gestão completa sem usar o admin |
 | 8 | `analytics` selectors + metrics | KPIs batem com cálculo manual em fixtures |

@@ -7,6 +7,8 @@ from typing import Any
 from django.http import HttpRequest
 from django.urls import NoReverseMatch, reverse
 
+from .dev_autologin import is_enabled as dev_auto_login_enabled
+
 
 @dataclass(frozen=True)
 class NavItem:
@@ -41,4 +43,9 @@ def navigation(request: HttpRequest) -> dict[str, Any]:
         NavItem(label, icon, name, _url(name), active=current == name)
         for label, icon, name in _ITEMS
     ]
-    return {"nav_items": items, "new_transaction_url": _url("ledger:transaction_create")}
+    return {
+        "nav_items": items,
+        "new_transaction_url": _url("ledger:transaction_create"),
+        # Com login automático, "Sair" entraria de novo na hora: o botão é escondido.
+        "dev_auto_login": dev_auto_login_enabled(),
+    }
