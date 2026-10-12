@@ -36,6 +36,12 @@ def months_between(first: datetime.date, last: datetime.date) -> list[datetime.d
     return months
 
 
+def first_full_month(first_day: datetime.date) -> datetime.date:
+    """Primeiro mês inteiramente coberto a partir de `first_day` (um mês que começou no meio
+    não serve de base histórica: as despesas dele estariam subestimadas)."""
+    return first_day if first_day.day == 1 else add_months(month_start(first_day), 1)
+
+
 def _is_calendar_span(start: datetime.date, end: datetime.date) -> bool:
     return start.day == 1 and end == month_end(end)
 

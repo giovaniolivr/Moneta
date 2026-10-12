@@ -57,6 +57,11 @@ CSS próprio sem build (ADR 0002) · gráficos SVG próprios (ADR 0003) · pytes
   comparado pro-rata (`comparable_ranges`); período fechado com o anterior inteiro. Médias mensais
   só com meses fechados. Todo gráfico tem tabela equivalente e link de drill-down
   (`TransactionFilter.to_query()`).
+- Análises automáticas: regras em `analytics/domain/insights.py` (classe com `id`, `title`,
+  `evaluate(ctx) -> list[Insight]`), limiares em `InsightSettings`, contexto montado em
+  `dashboard.build_insights()`. Todo insight tem `evidence` (tabela "Por quê?") e `filter`
+  (drill-down); falta de histórico → `insufficient=True` com o que falta. Histórico = só meses
+  completos. Nova regra entra em `DEFAULT_RULES` com testes de disparo, não disparo e insuficiente.
 - Gráficos: dados via `json_script`, desenho em `static/js/charts.js`, cores pelas classes
   `viz-*` (tokens `--color-chart-1..8`, paleta validada pelo skill dataviz). Texto nunca usa a cor
   da série; séries ≥ 2 sempre com legenda.

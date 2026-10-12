@@ -2,6 +2,12 @@ from decimal import Decimal
 from typing import Any
 
 from django import template
+from django.urls import reverse
+
+from apps.analytics.domain.insights import Evidence
+from apps.analytics.domain.metrics import format_pct
+from apps.core.money import format_brl
+from apps.ledger.filters import TransactionFilter
 
 register = template.Library()
 
@@ -9,10 +15,7 @@ register = template.Library()
 @register.filter
 def pct(value: Decimal | None) -> str:
     """Decimal(18.0) → "18%"; Decimal(33.3) → "33,3%"; None → "—"."""
-    if value is None:
-        return "—"
-    text = f"{abs(value):.1f}".replace(".", ",").removesuffix(",0")
-    return f"{'-' if value < 0 else ''}{text}%"
+    return format_pct(value)
 
 
 @register.filter
@@ -36,3 +39,36 @@ def pace_rows(chart: dict[str, Any]) -> list[dict[str, Any]]:
         }
         for i, day in enumerate(chart["labels"])
     ]
+
+
+_SEVERITY = {
+    "attention": ("circle-alert", "Atenção"),
+    "positive": ("circle-check", "Ponto positivo"),
+    "info": ("info", "Informação"),
+}
+
+
+@register.filter
+def insight_icon(severity: str) -> str:
+    return _SEVERITY.get(severity, _SEVERITY["info"])[0]
+
+
+@register.filter
+def insight_severity_label(severity: str) -> str:
+    return _SEVERITY.get(severity, _SEVERITY["info"])[1]
+
+
+@register.filter
+def evidence_value(item: Evidence) -> str:
+    if item.value is None:
+        return "—"
+    if item.unit == "brl" and isinstance(item.value, int):
+        return format_brl(item.value)
+    if item.unit == "pct" and isinstance(item.value, Decimal):
+        return format_pct(item.value)
+    return str(item.value)
+
+
+@register.filter
+def transaction_list_url(transaction_filter: TransactionFilter) -> str:
+    return f"{reverse('ledger:transaction_list')}?{transaction_filter.to_query()}"

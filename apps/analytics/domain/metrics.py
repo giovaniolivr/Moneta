@@ -19,6 +19,14 @@ def percent(part: int, whole: int) -> Decimal | None:
     return (Decimal(part) * 100 / Decimal(whole)).quantize(ONE_DECIMAL, ROUND_HALF_EVEN)
 
 
+def format_pct(value: Decimal | None) -> str:
+    """Decimal(18.0) → "18%"; Decimal(33.3) → "33,3%"; None → "—"."""
+    if value is None:
+        return "—"
+    text = f"{abs(value):.1f}".replace(".", ",").removesuffix(",0")
+    return f"{'-' if value < 0 else ''}{text}%"
+
+
 def pct_change(current: int, previous: int) -> Decimal | None:
     """Variação percentual; None se não houver base (anterior = 0)."""
     if previous == 0:

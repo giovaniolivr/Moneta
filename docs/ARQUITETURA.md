@@ -327,27 +327,40 @@ anterior equivalente, participação por categoria/tag/forma de pagamento, taxa 
 (resultado ÷ receitas).
 
 ### 6.3 Regras de análise (insights)
-Cada regra é uma classe pequena:
+Implementadas em `analytics/domain/insights.py` (Python puro). `dashboard.build_insights()` agrega
+o histórico no banco e monta um `AnalyticsContext`; cada regra é uma classe pequena:
 
 ```python
 class InsightRule(Protocol):
     id: str
-    min_months_history: int          # sem dados suficientes → Insight de "dados insuficientes" ou nada
-    def evaluate(self, ctx: AnalyticsContext) -> Insight | None: ...
+    title: str
+    def evaluate(self, ctx: AnalyticsContext) -> list[Insight]: ...   # [] = nada a dizer
 
 @dataclass(frozen=True)
 class Insight:
     rule_id: str
+    title: str
     severity: Literal["info", "attention", "positive"]
-    message: str                      # "Alimentação aumentou 18% vs média dos últimos 3 meses"
-    evidence: dict                    # números usados → mostrados no "por quê?" e testáveis
-    filter: TransactionFilter         # link para as movimentações que geraram o insight
+    message: str                      # "Alimentação: R$ 500,00 em outubro até o dia 15, 66,7% acima…"
+    evidence: tuple[Evidence, ...]    # (rótulo, valor, unidade brl|pct|text) → "Por quê?" e testes
+    filter: TransactionFilter | None  # link para as movimentações que geraram o insight
+    insufficient: bool = False        # "ainda sem dados suficientes" (declarado, não omitido)
 ```
 
-Regras iniciais: concentração (top categorias somam X%), aumento acima da média histórica
-(limiar configurável, ex. +15% e valor absoluto mínimo para não alertar sobre R$ 3 → R$ 5),
-tendência (3 meses consecutivos subindo/caindo), dia/semana de maior gasto, resumo do mês.
-Sem histórico suficiente, a regra declara a limitação em vez de concluir.
+Uma regra pode devolver vários insights (ex.: mais de uma categoria acima da média, limitado por
+`max_per_rule`). Limiares ficam em `InsightSettings` (configuráveis no futuro por usuário).
+
+| Regra | O que diz | Cuidados |
+|---|---|---|
+| Resumo | gasto do período, variação vs anterior equivalente, quanto sobrou | período em andamento no vermelho só informa (é comum antes do salário) |
+| Acima da média | categoria do mês ≥ +15% **e** ≥ R$ 50 acima da média dos 3 meses anteriores | só períodos de um mês; mês em andamento usa os **mesmos dias** de cada mês da base; a partir do 7º dia |
+| Tendência | total ou categoria subindo/caindo 3 meses seguidos (variação ≥ R$ 50) | só meses fechados; 4 meses completos |
+| Concentração | menor grupo (até 3) de categorias com ≥ 50% das despesas | o grupo precisa ter ≥ 1,5× a fatia "justa" (k/n) — fatias iguais não são concentração |
+| Dia da semana | dia da semana com gasto típico ≥ 1,5× os demais (e ≥ R$ 20) | **mediana** dos totais diários das últimas 8 semanas: um gasto isolado não vira padrão |
+
+Histórico = só **meses completos** a partir do primeiro mês inteiro de uso (o mês da primeira
+receita/despesa, se começou no meio, fica de fora — subestimaria a média). Sem histórico
+suficiente, a regra devolve um insight `insufficient` dizendo quanto falta.
 
 ---
 
@@ -414,7 +427,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 | 7b ✅ | Telas de categorias, tags (apelidos, mesclar) e contas | gestão completa sem usar o admin |
 | 8 ✅ | `analytics` selectors + metrics | KPIs batem com cálculo manual em fixtures |
 | 9 ✅ | Dashboard: KPIs + gráficos + drill-down | clique leva à lista filtrada |
-| 10 | Insights (regras + "dados insuficientes") | cada regra com teste |
+| 10 ✅ | Insights (regras + "dados insuficientes") | cada regra com teste |
 | 11 | Seções secundárias da dashboard (tags, formas de pgto, comparativos) | |
 | 12 | Export/import JSON, CSV, comando de backup | round-trip preserva totais |
 | 13 | Polimento: estados vazios, acessibilidade, PWA (manifest + ícone) | usável diariamente |

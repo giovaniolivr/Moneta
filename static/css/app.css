@@ -1953,6 +1953,88 @@
   }
 }
 
+/* Análises automáticas da dashboard: severidade pelo ícone + rótulo (nunca só pela cor). */
+@layer components {
+  .insight-list {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .insight {
+    display: flex;
+    gap: var(--space-3);
+    padding: var(--space-3) 0;
+    border-top: 1px solid var(--color-hairline);
+  }
+
+  .insight:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .insight-icon {
+    flex: none;
+    padding-top: 2px;
+    color: var(--color-info);
+  }
+
+  .insight-attention .insight-icon {
+    color: var(--color-warning);
+  }
+
+  .insight-positive .insight-icon {
+    color: var(--color-income);
+  }
+
+  .insight-body {
+    display: grid;
+    flex: 1;
+    gap: var(--space-1);
+    min-width: 0;
+  }
+
+  .insight-title {
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .insight-message {
+    color: var(--color-body);
+  }
+
+  .insight-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-4);
+  }
+
+  .insight-why table {
+    max-width: 32rem;
+  }
+
+  .insight-pending {
+    display: grid;
+    gap: var(--space-1);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-hairline);
+    color: var(--color-muted);
+  }
+
+  .insight-pending ul {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding-left: var(--space-4);
+  }
+}
+
 /* ───────────────────────────── Utilitários ───────────────────────────── */
 @layer utilities {
   .muted {

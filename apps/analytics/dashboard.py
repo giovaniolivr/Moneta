@@ -1,6 +1,7 @@
 """Monta os dados da dashboard (indicadores, séries e detalhamentos) para um período."""
 
 import datetime
+import uuid
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
@@ -12,11 +13,20 @@ from apps.ledger.filters import TransactionFilter
 from apps.ledger.models import TransactionKind
 
 from . import selectors
+from .domain.insights import (
+    AnalyticsContext,
+    Insight,
+    InsightSettings,
+    MonthData,
+    evaluate,
+    weekday_window,
+)
 from .domain.metrics import Delta, Totals, cumulative, daily_average, monthly_average, percent
 from .domain.periods import (
     Comparison,
     add_months,
     comparable_ranges,
+    first_full_month,
     month_end,
     month_start,
 )
@@ -29,6 +39,7 @@ PERIODS: list[tuple[str, str]] = [
     ("ano", "Este ano"),
 ]
 DEFAULT_PERIOD = "mes"
+HISTORY_MONTHS = 12  # histórico máximo usado pelas análises automáticas
 MONTH_ABBR = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 
 
@@ -81,7 +92,17 @@ class Dashboard:
     net_chart: dict[str, Any]
     pace_chart: dict[str, Any] | None
     has_data: bool
+    insights: list[Insight] = field(default_factory=list)
     extras: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def findings(self) -> list[Insight]:
+        return [i for i in self.insights if not i.insufficient]
+
+    @property
+    def pending_insights(self) -> list[Insight]:
+        """Análises que ainda não têm dados suficientes (declaradas, não omitidas)."""
+        return [i for i in self.insights if i.insufficient]
 
 
 def _list_link(**kwargs: Any) -> str:
@@ -104,6 +125,72 @@ def _bar_rows(items: list[selectors.Breakdown], total: int, link: Any) -> list[d
         }
         for i in items
     ]
+
+
+def _last_closed_month(span_end: datetime.date, today: datetime.date) -> datetime.date:
+    if span_end == month_end(span_end) and span_end < today:
+        return month_start(span_end)
+    return add_months(month_start(span_end), -1)
+
+
+def build_insights(
+    user: AbstractBaseUser | AnonymousUser,
+    comparison: Comparison,
+    *,
+    single_month: bool,
+    today: datetime.date,
+    current: Totals,
+    previous: Totals | None,
+    expenses_by_category: dict[uuid.UUID, int],
+    settings: InsightSettings | None = None,
+) -> list[Insight]:
+    """Agrega o histórico necessário e avalia as regras de `domain.insights`."""
+    first = selectors.first_activity_date(user)
+    if first is None:
+        return []
+    settings = settings or InsightSettings()
+    span = comparison.current
+    months: list[MonthData] = []
+    last_closed = _last_closed_month(span.end, today)
+    first_month = max(first_full_month(first), add_months(last_closed, -(HISTORY_MONTHS - 1)))
+    if first_month <= last_closed:
+        last_day = month_end(last_closed)
+        full = selectors.monthly_category_expenses(user, first_month, last_day)
+        comparable = (
+            selectors.monthly_category_expenses(
+                user, first_month, last_day, until_day_of_month=span.end.day
+            )
+            if comparison.partial and single_month
+            else full
+        )
+        months = [
+            MonthData(
+                p.month,
+                p.income_cents,
+                p.expense_cents,
+                full.get(p.month, {}),
+                comparable.get(p.month, {}),
+            )
+            for p in selectors.monthly_series(user, first_month, last_day)
+        ]
+    window = weekday_window(span, today, settings.weekday_weeks)
+    ctx = AnalyticsContext(
+        today=today,
+        current=span,
+        partial=comparison.partial,
+        single_month=single_month,
+        totals=current,
+        previous=comparison.previous,
+        previous_totals=previous,
+        expenses_by_category=expenses_by_category,
+        category_names=selectors.category_names(user),
+        months=months,
+        first_date=first,
+        weekday_window=window,
+        daily_expenses=selectors.daily_expenses(user, window.start, window.end),
+        settings=settings,
+    )
+    return evaluate(ctx)
 
 
 def build_dashboard(
@@ -199,8 +286,9 @@ def build_dashboard(
         }
 
     expense_total = current.expense_cents
+    by_category = selectors.expenses_by_category(user, start, effective_end)
     categories = _bar_rows(
-        selectors.expenses_by_category(user, start, effective_end),
+        by_category,
         expense_total,
         lambda i: _list_link(
             date_from=start,
@@ -225,6 +313,20 @@ def build_dashboard(
         ),
     )
 
+    insights = (
+        build_insights(
+            user,
+            comparison,
+            single_month=period in {"mes", "mes-anterior"},
+            today=today,
+            current=current,
+            previous=previous,
+            expenses_by_category={b.id: b.cents for b in by_category if b.id is not None},
+        )
+        if comparison
+        else []
+    )
+
     return Dashboard(
         period=period,
         start=start,
@@ -243,4 +345,5 @@ def build_dashboard(
         net_chart=net_chart,
         pace_chart=pace_chart,
         has_data=bool(current.income_cents or current.expense_cents),
+        insights=insights,
     )

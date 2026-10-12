@@ -44,7 +44,7 @@ pytest · ruff · mypy (strict)
 - [x] 7b. Telas de categorias (cor e ícone), tags (apelidos, mesclar) e contas (saldo líquido, cartão como dívida)
 - [x] 8. Motor de indicadores (comparação pro-rata, médias de meses fechados, detalhamentos)
 - [x] 9. Dashboard com gráficos acessíveis, tabela equivalente e drill-down para a lista
-- [ ] 10. Análises automáticas
+- [x] 10. Análises automáticas (resumo, acima da média, tendência, concentração, dia da semana) com evidência numérica e aviso de dados insuficientes
 - [ ] 11. Seções secundárias da dashboard
 - [ ] 12. Exportação, importação e backup
 - [ ] 13. Polimento, acessibilidade e PWA

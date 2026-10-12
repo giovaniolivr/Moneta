@@ -1,0 +1,44 @@
+{% load ui dashboard_ui %}<section class="card span-full insights" aria-labelledby="insights-title">
+  <div class="card-header">
+    <h2 id="insights-title">Análises</h2>
+    <span class="text-sm muted">Calculadas a partir das suas movimentações</span>
+  </div>
+  {% if dash.findings %}
+    <ul class="insight-list">
+      {% for insight in dash.findings %}
+        <li class="insight insight-{{ insight.severity }}">
+          <span class="insight-icon">{% icon insight.severity|insight_icon %}</span>
+          <div class="insight-body">
+            <p class="insight-title"><span class="sr-only">{{ insight.severity|insight_severity_label }}: </span>{{ insight.title }}</p>
+            <p class="insight-message">{{ insight.message }}</p>
+            <div class="insight-actions">
+              {% if insight.filter %}<a class="text-sm" href="{{ insight.filter|transaction_list_url }}">Ver movimentações</a>{% endif %}
+              {% if insight.evidence %}
+                <details class="chart-table insight-why">
+                  <summary>Por quê?</summary>
+                  <table>
+                    <tbody>
+                      {% for item in insight.evidence %}
+                        <tr><th scope="row">{{ item.label }}</th><td>{{ item|evidence_value }}</td></tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </details>
+              {% endif %}
+            </div>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  {% if dash.pending_insights %}
+    <div class="insight-pending">
+      <p class="text-sm">Ainda sem dados suficientes:</p>
+      <ul>
+        {% for insight in dash.pending_insights %}
+          <li class="text-sm"><strong>{{ insight.title }}.</strong> {{ insight.message }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+</section>

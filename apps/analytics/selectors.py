@@ -13,6 +13,7 @@ from django.db.models.functions import TruncMonth
 from apps.ledger.filters import TransactionFilter
 from apps.ledger.models import PaymentMethod, Transaction, TransactionKind
 from apps.ledger.selectors import filter_transactions
+from apps.taxonomy.models import Category
 
 from .domain.metrics import Totals
 from .domain.periods import months_between
@@ -154,3 +155,42 @@ def daily_expenses(
         .annotate(cents=Sum("amount_cents"))
     )
     return {r["date"]: r["cents"] for r in rows}
+
+
+def first_activity_date(user: UserLike) -> datetime.date | None:
+    """Data da primeira receita ou despesa (transferências não indicam uso do orçamento)."""
+    first: datetime.date | None = (
+        _in_range(user, None, None)
+        .filter(kind__in=(TransactionKind.INCOME, TransactionKind.EXPENSE))
+        .order_by("date")
+        .values_list("date", flat=True)
+        .first()
+    )
+    return first
+
+
+def monthly_category_expenses(
+    user: UserLike,
+    first_month: datetime.date,
+    last_day: datetime.date,
+    *,
+    until_day_of_month: int | None = None,
+) -> dict[datetime.date, dict[uuid.UUID, int]]:
+    """Despesas por mês e categoria. `until_day_of_month` restringe cada mês aos dias 1..N
+    (base pro-rata para comparar com um mês em andamento)."""
+    qs = _in_range(user, first_month, last_day).filter(kind=TransactionKind.EXPENSE)
+    if until_day_of_month is not None:
+        qs = qs.filter(date__day__lte=until_day_of_month)
+    rows = (
+        qs.annotate(month=TruncMonth("date"))
+        .values("month", "category_id")
+        .annotate(cents=Sum("amount_cents"))
+    )
+    result: dict[datetime.date, dict[uuid.UUID, int]] = {}
+    for r in rows:
+        result.setdefault(r["month"], {})[r["category_id"]] = r["cents"]
+    return result
+
+
+def category_names(user: UserLike) -> dict[uuid.UUID, str]:
+    return dict(Category.objects.for_user(user).values_list("pk", "name"))

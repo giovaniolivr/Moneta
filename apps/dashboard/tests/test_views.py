@@ -116,3 +116,20 @@ def test_does_not_leak_other_users_data(logged: Client, client: Client, other_us
 )
 def test_pct_filter(value: Decimal | None, expected: str) -> None:
     assert pct(value) == expected
+
+
+def test_renders_insights_with_evidence_and_pending(logged: Client) -> None:
+    html = logged.get(reverse("home")).content.decode()
+    assert 'id="insights-title"' in html
+    assert "Em outubro até o dia 10, você gastou" in html
+    assert "Por quê?" in html  # evidência numérica sempre visível
+    assert "Ver movimentações" in html
+    # Uso começou em setembro: as regras que dependem de histórico declaram a limitação.
+    assert "Ainda sem dados suficientes" in html
+    assert "(há 0)" in html
+
+
+def test_no_insights_without_data(client: Client, other_user: Any) -> None:
+    client.force_login(other_user)
+    html = client.get(reverse("home")).content.decode()
+    assert 'id="insights-title"' not in html

@@ -56,6 +56,9 @@
     </div>
   {% endif %}
 
+  {# ───── Análises automáticas ───── #}
+  {% if dash.insights %}{% include "dashboard/_insights.html" %}{% endif %}
+
   {# ───── Evolução mensal ───── #}
   <section class="card chart-card span-2" aria-labelledby="chart-monthly-title">
     <div class="chart-header">
