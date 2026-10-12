@@ -19,7 +19,7 @@ pytest · ruff · mypy (strict)
 
 - [x] 0. Esqueleto: settings por ambiente, usuário customizado, login obrigatório, CSP, testes
 - [x] 1. Valores monetários (centavos ↔ R$): parser tolerante, formatação BRL, campo de formulário
-- [ ] 2. Contas e categorias
+- [x] 2. Contas e categorias (padrões criados por usuário, nomes únicos sem caixa/acentos)
 - [ ] 3. Tags com normalização, aliases e mesclagem
 - [ ] 4. Movimentações (receitas, despesas, transferências)
 - [ ] 5. Layout base e temas escuro/claro

@@ -2,8 +2,12 @@
 
 from pathlib import Path
 
+import django_stubs_ext
 import environ
 from django.utils.csp import CSP
+
+# Permite anotações genéricas em runtime (ex.: ModelAdmin[Account]) exigidas pelo mypy strict.
+django_stubs_ext.monkeypatch()
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -23,6 +27,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "apps.core",
     "apps.users",
+    "apps.taxonomy",
+    "apps.ledger",
 ]
 
 MIDDLEWARE = [

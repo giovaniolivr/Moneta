@@ -38,7 +38,10 @@ Tailwind v4 via django-tailwind-cli (sem Node) · Apache ECharts · pytest · ru
 ## Estrutura
 `config/settings/{base,dev,test,prod}.py` · `apps/<app>/` (`models`, `services`, `selectors`,
 `domain/`, `views`, `tests/`) · `templates/` · `static/` · `docs/`.
-Apps de dados herdam `apps.core.models.OwnedModel`.
+Apps de dados herdam `apps.core.models.OwnedModel`. Services recebem `apps.users.models.User`;
+nomes de entidades passam por `apps.core.names` (exibição limpa + chave normalizada única).
+Fixtures de teste compartilhadas (`user`, `other_user`) em `conftest.py`; todo service novo
+precisa de teste de isolamento entre usuários.
 
 ## Comandos
 ```bash

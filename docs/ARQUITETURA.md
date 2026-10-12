@@ -126,6 +126,7 @@ moneta/
 │   ├── core/                  # infraestrutura compartilhada
 │   │   ├── models.py          # TimeStampedModel, OwnedModel, OwnedQuerySet
 │   │   ├── money.py           # parse/format BRL ↔ centavos
+│   │   ├── names.py           # normalização de nomes (contas, categorias, tags)
 │   │   └── templatetags/      # |brl, |data_br
 │   ├── users/                 # User customizado (sem cadastro público)
 │   ├── ledger/                # contas e movimentações
@@ -135,8 +136,8 @@ moneta/
 │   │   ├── filters.py         # TransactionFilter (dataclass) ← compartilhado com dashboard
 │   │   ├── forms.py / views.py / urls.py / templates/ledger/
 │   │   └── tests/
-│   ├── taxonomy/              # categorias, tags, aliases, normalização
-│   │   ├── normalization.py   # puro, sem Django
+│   ├── taxonomy/              # categorias, tags, aliases
+│   │   ├── defaults.py        # categorias padrão de todo usuário novo
 │   │   └── services.py        # create_or_get_tag, rename, merge
 │   ├── analytics/             # SEM models
 │   │   ├── selectors.py       # agregações SQL → dataclasses
@@ -190,10 +191,17 @@ pode escondê-las até você precisar.
 |---|---|---|
 | name | char | nome de exibição |
 | kind | enum | `expense` / `income` |
-| color, icon | char | para a UI e gráficos |
-| parent | FK self, null | **[ADIAR]** subcategorias; campo existe, UI não |
+| color | enum `1`–`8` | **posição na paleta** do tema, não hex: cada tema define a cor com contraste garantido |
+| icon | char | nome do ícone (Lucide) |
 | is_archived | bool | |
 | unique | (owner, kind, normalized_name) | |
+
+Subcategorias **[ADIAR]**: um `parent` nulo entra numa migração simples quando houver necessidade.
+Categorias padrão (`taxonomy/defaults.py`) **não incluem "Investimentos"**: aplicar dinheiro é
+transferência para uma conta `investment`, não consumo.
+
+Contas e categorias padrão são criadas por *signals* de criação de usuário (um por app, cada app
+cuida do próprio bootstrap) e, para usuários pré-existentes, por migração de dados.
 
 ### Tag / TagAlias
 ```
@@ -201,7 +209,7 @@ Tag(owner, name, normalized_name)          unique(owner, normalized_name)
 TagAlias(owner, normalized_alias, tag FK)  unique(owner, normalized_alias)
 ```
 
-**Normalização determinística** (`taxonomy/normalization.py`, sem LLM):
+**Normalização determinística** (`core/names.py`, sem LLM; a mesma usada para nomes de contas e categorias):
 `NFKC → strip → colapsa espaços → casefold → remove acentos (NFKD sem marcas combinantes)`.
 Ex.: `"  MERCADO "`, `"Mercado"`, `"mercado"` → `mercado`; `"Saúde"` → `saude`.
 
@@ -368,7 +376,7 @@ Meta: 100% de cobertura em `domain/` e `money`; o resto, pelos fluxos essenciais
 |---|---------|---------------|
 | 0 ✅ | Esqueleto: uv, Django, settings divididos, ruff/mypy/pytest, `.gitignore`, `core`, `users`, login | `pytest` verde; login funciona; nenhuma página acessível sem login |
 | 1 ✅ | `core.money` + filtros de template | testes de parse/format BRL |
-| 2 | Contas e categorias (models, seed padrão, admin) | seed cria categorias para um usuário novo |
+| 2 ✅ | Contas e categorias (models, seed padrão, admin) | seed cria categorias para um usuário novo |
 | 3 | Tags + normalização + aliases + merge | testes de normalização e merge |
 | 4 | Transaction + services (CRUD, validações, transferências) | regras da §4 testadas |
 | 5 | Layout base + tokens do DESIGN.md (Tailwind) + componentes | tela vazia navegável no celular |
